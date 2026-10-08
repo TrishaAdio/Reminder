@@ -1,0 +1,190 @@
+@font-face {
+  font-family: 'Inter';
+  src: url('./fonts/InterVariable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  color-scheme: light dark;
+  --font: 'Inter', 'Segoe UI Variable Text', 'Segoe UI', sans-serif;
+
+  --bg: #f7f6f4;
+  --sidebar: #eeece8;
+  --surface: #ffffff;
+  --popup: #ffffff;
+  --text: #1c1b19;
+  --text-2: #64615b;
+  --text-3: #7a766f;
+  --separator: rgba(28, 27, 25, 0.09);
+  --fill: rgba(28, 27, 25, 0.055);
+  --fill-hover: rgba(28, 27, 25, 0.085);
+  --fill-press: rgba(28, 27, 25, 0.12);
+  --track-off: rgba(28, 27, 25, 0.16);
+  --selection: rgba(28, 27, 25, 0.075);
+  --accent: #a84f0a;
+  --accent-hover: #974709;
+  --accent-press: #853f08;
+  --on-accent: #ffffff;
+  --accent-tint: rgba(168, 79, 10, 0.1);
+  --knob: #ffffff;
+  --text-selection: rgba(168, 79, 10, 0.2);
+
+  --shadow-popup: 0 1px 2px rgba(31, 22, 10, 0.06), 0 6px 16px rgba(31, 22, 10, 0.08),
+    0 18px 44px rgba(31, 22, 10, 0.14);
+  --shadow-knob: 0 1px 2px rgba(31, 22, 10, 0.12), 0 2px 6px rgba(31, 22, 10, 0.06);
+
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+  --s10: 40px;
+
+  /* Concentric: outer = inner + inset (see docs/DESIGN.md). */
+  --r-card: 24px;
+  --r-card-button: 12px;
+  --r-group: 12px;
+  --r-control: 8px;
+  --r-thumb: 6px;
+  --r-row: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1a19;
+    --sidebar: #151413;
+    --surface: #262523;
+    --popup: #2b2927;
+    --text: #f4f3f0;
+    --text-2: #a9a59e;
+    --text-3: #8f8b84;
+    --separator: rgba(255, 255, 255, 0.08);
+    --fill: rgba(255, 255, 255, 0.07);
+    --fill-hover: rgba(255, 255, 255, 0.1);
+    --fill-press: rgba(255, 255, 255, 0.14);
+    --track-off: rgba(255, 255, 255, 0.18);
+    --selection: rgba(255, 255, 255, 0.08);
+    --accent: #f0a040;
+    --accent-hover: #f5b05a;
+    --accent-press: #e4922f;
+    --on-accent: #231505;
+    --accent-tint: rgba(240, 160, 64, 0.15);
+    --knob: #f4f3f0;
+    --text-selection: rgba(240, 160, 64, 0.32);
+    --shadow-popup: 0 1px 2px rgba(0, 0, 0, 0.2), 0 6px 16px rgba(0, 0, 0, 0.26),
+      0 18px 44px rgba(0, 0, 0, 0.42);
+    --shadow-knob: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.18);
+  }
+}
+
+/* Type scale: six sizes, three weights. Tracking follows Inter's dynamic metrics. */
+.t-display { font-size: 24px; line-height: 30px; font-weight: 600; letter-spacing: -0.019em; }
+.t-title { font-size: 20px; line-height: 26px; font-weight: 600; letter-spacing: -0.017em; }
+.t-lead { font-size: 15px; line-height: 21px; font-weight: 400; letter-spacing: -0.009em; }
+.t-body { font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: -0.006em; }
+.t-callout { font-size: 13px; line-height: 18px; font-weight: 400; letter-spacing: -0.003em; }
+.t-caption { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0; }
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: -0.006em;
+  font-optical-sizing: auto;
+  color: var(--text);
+  user-select: none;
+  cursor: default;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+  font: inherit;
+}
+
+button,
+input {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: default;
+}
+
+svg.icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--text-selection);
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Spring curves are injected as custom properties by spring.js. */
+.pressable {
+  transition: transform var(--release-duration, 360ms) var(--release-easing, ease-out);
+}
+
+.pressable:active:not(:disabled),
+.pressable.is-pressed {
+  transform: scale(0.97);
+  transition-duration: var(--press-duration, 120ms);
+  transition-timing-function: var(--press-easing, ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pressable,
+  .pressable:active:not(:disabled),
+  .pressable.is-pressed {
+    transform: none;
+    transition: none;
+  }
+}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; media-src app://sound; base-uri 'none'; form-action 'none'"
+    />
+    <title>Reminder</title>
+    <link rel="stylesheet" href="../shared/tokens.css" />
+    <link rel="stylesheet" href="popup.css" />
+    <script type="module" src="popup.js"></script>
+  </head>
+  <body>
+    <div class="card" role="alertdialog" aria-labelledby="title" aria-describedby="note">
+      <div class="shadow" aria-hidden="true"></div>
+      <div class="surface">
+        <div class="content">
+          <span class="badge" id="badge" aria-hidden="true"></span>
+          <div class="text">
+            <p class="eyebrow t-callout"><span id="name"></span> · <time id="time" class="tnum"></time></p>
+            <h1 class="title t-display" id="title"></h1>
+            <p class="note t-lead" id="note"></p>
+            <p class="queue t-caption" id="queue" hidden></p>
+          </div>
+          <button class="close pressable" id="close" type="button"></button>
+        </div>
+        <div class="actions">
+          <button class="action pressable" type="button" data-action="2" aria-keyshortcuts="2">Wait 2 min</button>
+          <button class="action pressable" type="button" data-action="3" aria-keyshortcuts="3">Wait 3 min</button>
+          <button class="action primary pressable" type="button" data-action="done" aria-keyshortcuts="Enter">
+            <span class="label">Done</span>
+            <span class="tick" aria-hidden="true"><span class="tick-mark"><span class="tick-cover"></span></span></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,214 @@
+html,
+body {
+  background: transparent;
+  overflow: hidden;
+}
+
+/* Matches MARGIN in src/main/popup.js: room for the shadow and the exit travel. */
+body {
+  padding: 20px 28px 0;
+}
+
+.card {
+  position: relative;
+  width: 420px;
+  opacity: 0;
+}
+
+/* The shadow lives on its own layer and never animates by itself, so it is rasterised once. */
+.shadow {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-popup);
+}
+
+.surface {
+  position: relative;
+  border-radius: var(--r-card);
+  background: var(--popup);
+  overflow: hidden;
+}
+
+.content {
+  display: grid;
+  grid-template-columns: 40px 1fr 28px;
+  column-gap: var(--s3);
+  padding: var(--s5) var(--s3) var(--s4) var(--s5);
+}
+
+.badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+
+.badge .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.text {
+  min-width: 0;
+  min-height: 75px;
+}
+
+.eyebrow {
+  color: var(--text-2);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title,
+.note {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.title {
+  margin-top: 2px;
+  -webkit-line-clamp: 2;
+}
+
+.note {
+  margin-top: var(--s1);
+  color: var(--text-2);
+  -webkit-line-clamp: 3;
+}
+
+.queue {
+  margin-top: var(--s2);
+  color: var(--text-2);
+}
+
+.close {
+  width: 28px;
+  height: 28px;
+  margin-top: -4px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+  opacity: 0;
+  transition: opacity var(--exit-duration) var(--exit-easing), transform var(--release-duration) var(--release-easing);
+}
+
+.close .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.card:hover .close,
+.close:focus-visible {
+  opacity: 1;
+}
+
+.close:hover {
+  background: var(--fill-hover);
+  color: var(--text);
+}
+
+.close:active {
+  background: var(--fill-press);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.3fr;
+  gap: var(--s2);
+  padding: var(--s1) var(--s3) var(--s3);
+}
+
+.action {
+  --button-bg: var(--fill);
+  position: relative;
+  height: 44px;
+  border-radius: var(--r-card-button);
+  background: var(--button-bg);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.action:hover {
+  --button-bg: var(--fill-hover);
+}
+
+.action:active {
+  --button-bg: var(--fill-press);
+}
+
+.action.primary {
+  --button-bg: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.action.primary:hover {
+  --button-bg: var(--accent-hover);
+}
+
+.action.primary:active {
+  --button-bg: var(--accent-press);
+}
+
+.label {
+  display: inline-block;
+}
+
+/* The check "draws" by sliding a cover of the button colour off it: transform only. */
+.tick {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tick-mark {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  overflow: hidden;
+}
+
+.tick-mark .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.tick-cover {
+  position: absolute;
+  inset: 0;
+  background: var(--button-bg);
+}
+
+/* Solid fallback: no transparency available, so no radius, no shadow, a plain hairline. */
+.solid body {
+  padding: 0;
+}
+
+.solid .card {
+  width: 100vw;
+}
+
+.solid .shadow {
+  display: none;
+}
+
+.solid .surface {
+  border-radius: 0;
+  border: 1px solid var(--separator);
+}
+
+.solid .action {
+  border-radius: var(--r-control);
+}
