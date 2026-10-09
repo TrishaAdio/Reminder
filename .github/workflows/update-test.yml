@@ -11,7 +11,7 @@ on:
         required: true
         default: v1.1.0
       scenario:
-        description: normal | allusers (installed for everyone) | reopen (user opens the app again mid-install)
+        description: normal | allusers (installed for everyone) | reopen (user opens the app again mid-install) | noinstaller (installer never runs; the relaunch guard must bring the app back)
         required: true
         default: normal
 
@@ -81,6 +81,7 @@ jobs:
           Get-Process RemindAni -ErrorAction SilentlyContinue | Select-Object Id, StartTime, MainWindowTitle | Format-Table -AutoSize
           "Updater log:"
           Get-Content "$env:APPDATA\RemindAni\logs\updater.log" -ErrorAction SilentlyContinue
+          if (-not $back) { exit 1 }
 
       - uses: actions/upload-artifact@v6
         if: always()

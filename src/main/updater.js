@@ -1,8 +1,10 @@
 'use strict';
 
 const { EventEmitter } = require('node:events');
-const { app } = require('electron');
+const { app, Notification } = require('electron');
 const FakeUpdater = require('./fake-updater');
+const { createUpdateLog } = require('./update-log');
+const { startRelaunchGuard } = require('./relaunch-guard');
 
 const SIX_HOURS = 6 * 60 * 60 * 1000;
 const FIRST_CHECK = 15_000;
@@ -29,10 +31,12 @@ class Updates extends EventEmitter {
     this.lastAction = null;
     if (!this.client) return;
 
+    this.log = createUpdateLog();
+    this.log.info(`RemindAni ${app.getVersion()} started${fake ? ` with --fake-update=${fake}` : ''}`);
     if (!fake) {
       this.client.autoDownload = false;
       this.client.autoInstallOnAppQuit = true;
-      this.client.logger = null;
+      this.client.logger = this.log;
     }
     this.client.on('checking-for-update', () => this.manual && this.set({ status: 'checking', error: null }));
     this.client.on('update-available', (info) => this.set({ status: 'available', version: info.version, checkedAt: Date.now() }));
@@ -49,12 +53,14 @@ class Updates extends EventEmitter {
   }
 
   set(patch) {
+    if (patch.status && patch.status !== this.state.status) this.log?.info(`state ${this.state.status} → ${patch.status}${patch.version ? ` ${patch.version}` : ''}`);
     this.state = { ...this.state, ...patch };
     this.emit('change', this.state);
   }
 
   // Background checks fail quietly; only checks and downloads someone asked for show an error.
   failed(err) {
+    this.log?.error(`${this.lastAction ?? 'update'} failed`, err);
     if (!this.manual && this.lastAction === 'check') return;
     this.set({ status: 'error', error: describe(err) });
   }
@@ -83,7 +89,13 @@ class Updates extends EventEmitter {
 
   install() {
     if (this.state.status !== 'ready') return;
+    this.log.info(`installing ${this.state.version}`);
     this.beforeInstall();
+    // The window disappears while the installer runs, so say what is happening.
+    if (Notification.isSupported()) {
+      new Notification({ title: `Updating RemindAni to ${this.state.version}`, body: 'It opens again by itself in a moment. Your reminders are kept.', silent: true }).show();
+    }
+    startRelaunchGuard(process.execPath, this.log);
     // Silent install, then relaunch: per-user installs need no admin prompt.
     setImmediate(() => this.client.quitAndInstall(true, true));
   }

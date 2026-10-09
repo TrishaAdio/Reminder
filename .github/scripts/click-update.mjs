@@ -6,7 +6,9 @@ import { chromium } from 'playwright-core';
 
 const exe = process.env.REMINDANI_EXE;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const app = spawn(exe, ['--remote-debugging-port=9222'], { stdio: ['ignore', 'pipe', 'pipe'] });
+// noinstaller: the fake updater quits without running any installer, like a blocked install.
+const extra = process.env.SCENARIO === 'noinstaller' ? ['--fake-update=available'] : [];
+const app = spawn(exe, ['--remote-debugging-port=9222', ...extra], { stdio: ['ignore', 'pipe', 'pipe'] });
 app.stdout.on('data', (d) => process.stdout.write(`[app] ${d}`));
 app.stderr.on('data', (d) => process.stdout.write(`[app] ${d}`));
 app.on('exit', (code, signal) => console.log(`old app exited: code ${code} signal ${signal}`));
