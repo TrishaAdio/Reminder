@@ -61,11 +61,7 @@ export const ICON_LABEL = {
   flag: 'Flag',
 };
 
-// The app icon itself, matching build/icon.ico: an open ring with a bead resting in the gap.
+// The app icon itself, rendered from build/icon-source.jpg by scripts/build-icons.mjs.
 export function appMark(className = 'app-mark') {
-  return `<svg class="${className}" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false">
-    <rect x="64" y="64" width="896" height="896" rx="200" fill="#D2731C"/>
-    <path d="M 712.92 396.00 A 232 232 0 1 1 512.00 280.00" fill="none" stroke="#FFF6EA" stroke-width="92" stroke-linecap="round"/>
-    <circle cx="628.00" cy="311.08" r="54" fill="#FFF6EA"/>
-  </svg>`;
+  return `<img class="${className}" src="../shared/app-icon.png" alt="" draggable="false">`;
 }

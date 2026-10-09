@@ -100,6 +100,9 @@ body {
   position: relative;
   overflow-y: auto;
   overflow-x: hidden;
+  /* Short and long pages share one width, so switching tabs never re-centres the content
+     when the scrollbar comes or goes. */
+  scrollbar-gutter: stable both-edges;
   padding: var(--s2) var(--s8) 72px;
 }
 
