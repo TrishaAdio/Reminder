@@ -51,6 +51,14 @@ jobs:
             Set-Content exe-path.txt $exe
           }
 
+      - name: Guard smoke test (plain Node, dummy target)
+        run: |
+          node .github/scripts/guard-smoke.cjs
+          Start-Sleep 12
+          "guard-smoke.log:"; Get-Content "$env:TEMP\guard-smoke.log" -ErrorAction SilentlyContinue
+          "notepad running: $([bool](Get-Process notepad -ErrorAction SilentlyContinue))"
+          Get-Process notepad -ErrorAction SilentlyContinue | Stop-Process -Force
+
       - name: Click through the update like a user
         run: |
           npm install --no-save --no-audit --no-fund playwright-core@1.64.0 | Out-Null
@@ -74,6 +82,10 @@ jobs:
           foreach ($i in 1..120) {
             $p = Get-Process RemindAni -ErrorAction SilentlyContinue | Where-Object MainWindowTitle -eq 'RemindAni'
             if ($p) { $back = Get-Date; break }
+            if ($i -in 1, 6) {
+              "powershell processes at +$i s:"
+              Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | ForEach-Object { "  $($_.ProcessId) parent $($_.ParentProcessId) $($_.CommandLine.Substring(0, [Math]::Min(120, $_.CommandLine.Length)))" }
+            }
             if ($i -in 5, 15, 30) { Shot "during-$i" }
             Start-Sleep 1
           }
