@@ -1,13 +1,10 @@
-name: Release installer
+name: Release
 
+# Push a tag like v1.2.0 and this builds the installer on Windows and publishes it, with
+# latest.yml and the .blockmap, to the GitHub Release that installed copies update from.
 on:
-  release:
-    types: [published]
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: Release tag to build and attach the installer to
-        required: true
+  push:
+    tags: ['v*.*.*']
 
 permissions:
   contents: write
@@ -15,29 +12,37 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
-    env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ env.TAG }}
 
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
-      - run: npm ci
-      - run: npm test
-      - run: npm run dist -- --publish never
-
-      - name: Attach installer to release
+      - name: Skip if npm run release already published this tag
+        id: existing
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cd dist
-          exe=$(ls RemindAni-Setup-*.exe)
-          sha256sum "$exe" > "$exe.sha256"
-          cat "$exe.sha256"
-          gh release upload "$TAG" "$exe" "$exe.sha256" --clobber
+          if gh release view "$GITHUB_REF_NAME" --json assets -q '.assets[].name' 2>/dev/null | grep -qx latest.yml; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+            echo "Release $GITHUB_REF_NAME already has latest.yml; nothing to do."
+          fi
+
+      - if: steps.existing.outputs.done != 'true'
+        run: npm ci
+
+      - if: steps.existing.outputs.done != 'true'
+        run: npm test
+
+      # The tag is the version: v1.2.0 builds 1.2.0 even if package.json was not bumped.
+      - if: steps.existing.outputs.done != 'true'
+        shell: bash
+        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
+
+      - if: steps.existing.outputs.done != 'true'
+        run: npx electron-builder --win nsis --x64 --publish always
+        env:
+          GH_TOKEN: ${{ github.token }}

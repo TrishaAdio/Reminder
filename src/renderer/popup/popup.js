@@ -1,5 +1,5 @@
 import { animate, spring, reducedMotion, FADE, installSpringProperties, pulse } from '../shared/spring.js';
-import { icon } from '../shared/icons.js';
+import { icon, tintClass } from '../shared/icons.js';
 import { measureFrames } from './frames.js';
 
 installSpringProperties();
@@ -8,11 +8,12 @@ const api = window.popup;
 const $ = (id) => document.getElementById(id);
 const card = document.querySelector('.card');
 const content = document.querySelector('.content');
+const dim = document.querySelector('.dim');
 const doneButton = document.querySelector('[data-action="done"]');
 const doneLabel = doneButton.querySelector('.label');
 const tick = doneButton.querySelector('.tick');
 const tickCover = doneButton.querySelector('.tick-cover');
-const TRAVEL = 48;
+const TRAVEL = 64;
 
 doneButton.querySelector('.tick-mark').insertAdjacentHTML('afterbegin', icon('check'));
 $('close').innerHTML = icon('close');
@@ -25,8 +26,13 @@ const calm = () => reducedMotion() || current?.solid;
 
 function render(p) {
   current = p;
+  // A button clicked on an earlier card keeps focus; Enter must mean Done on every new card.
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
   document.documentElement.classList.toggle('solid', p.solid);
-  $('badge').innerHTML = icon(p.icon);
+  document.body.className = `pos-${p.position}`;
+  card.className = `card ${tintClass(p.icon)}`;
+  $('tile').className = 'tile';
+  $('tile').innerHTML = icon(p.icon);
   $('name').textContent = p.name;
   $('time').textContent = p.time;
   $('title').textContent = p.message;
@@ -39,12 +45,19 @@ function render(p) {
 function setQueue(count) {
   $('queue').hidden = !count;
   $('queue').textContent = count === 1 ? '1 more waiting' : `${count} more waiting`;
+  card.classList.remove('queued-1', 'queued-2');
+  if (count) card.classList.add(`queued-${Math.min(2, count)}`);
 }
+
+const rect = () => {
+  const r = card.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+};
 
 // The solid fallback window is exactly card-sized, so it has to follow height changes.
 function queueChanged(count) {
   setQueue(count);
-  if (current?.solid) api.ready(card.offsetHeight);
+  if (current?.solid) api.ready(rect());
 }
 
 function buttonFor(action) {
@@ -52,17 +65,13 @@ function buttonFor(action) {
 }
 
 function enter() {
+  document.body.classList.add('showing');
+  if (current.dim) animate(dim, [{ opacity: 0 }, { opacity: 1 }], { duration: 420, easing: spring('exit').easing });
   if (calm()) return animate(card, [{ opacity: 0, transform: 'none' }, { opacity: 1, transform: 'none' }], FADE);
   if (current.perf) measureFrames(700).then(api.reportFrames);
+  const from = current.position.startsWith('bottom') ? 'translateY(16px) scale(0.96)' : 'translateY(-16px) scale(0.96)';
   animate(content, [{ filter: 'blur(6px)' }, { filter: 'none' }], { duration: 160, easing: spring('exit').easing });
-  return animate(
-    card,
-    [
-      { opacity: 0, transform: 'translateY(-14px) scale(0.96)' },
-      { opacity: 1, transform: 'none' },
-    ],
-    'enter',
-  );
+  return animate(card, [{ opacity: 0, transform: from }, { opacity: 1, transform: 'none' }], 'enter');
 }
 
 async function confirmDone() {
@@ -88,11 +97,11 @@ function restoreDone() {
 }
 
 function leave(action) {
+  document.body.classList.remove('showing');
+  if (current?.dim) animate(dim, [{ opacity: 1 }, { opacity: 0 }], 'exit');
   if (calm()) return animate(card, [{ opacity: 1 }, { opacity: 0 }], FADE);
-  const to =
-    action === 'done'
-      ? 'scale(0.98)'
-      : `translate(${toward.x * TRAVEL}px, ${toward.y * TRAVEL}px) scale(0.9)`;
+  // Done settles in place; Wait shrinks away toward the tray, where it will come back from.
+  const to = action === 'done' ? 'scale(0.98)' : `translate(${toward.x * TRAVEL}px, ${toward.y * TRAVEL}px) scale(0.88)`;
   return animate(card, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: to }], 'exit');
 }
 
@@ -101,7 +110,7 @@ async function swap(next, action) {
   const away = action === 'done' ? 'translateY(-6px)' : `translate(${toward.x * 16}px, ${toward.y * 16}px)`;
   await animate(content, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: calm() ? 'none' : away }], calm() ? FADE : 'exit');
   render(next);
-  ({ toward } = await api.ready(card.offsetHeight));
+  ({ toward } = await api.ready(rect()));
   sound.play(next);
   restoreDone();
   await animate(
@@ -123,11 +132,16 @@ async function respond(action) {
     await swap(next, action);
   } else {
     await leave(action);
-    current = null;
-    resetDone();
-    api.exited();
+    finish();
   }
   busy = false;
+}
+
+function finish() {
+  current = null;
+  resetDone();
+  api.setInteractive(false);
+  api.exited();
 }
 
 function resetDone() {
@@ -156,9 +170,7 @@ function createSound() {
         audio.volume = volume;
         if (p.repeat) {
           // Repeats are softer and spaced out: a reminder, not an alarm.
-          audio.addEventListener('ended', () => (timer = setTimeout(() => start(p.volume * 0.45), 9000)), {
-            once: true,
-          });
+          audio.addEventListener('ended', () => (timer = setTimeout(() => start(p.volume * 0.45), 9000)), { once: true });
         }
         audio.play().catch(() => {});
       };
@@ -186,7 +198,7 @@ function createSound() {
 api.onShow(async (p) => {
   resetDone();
   render(p);
-  ({ toward } = await api.ready(card.offsetHeight));
+  ({ toward } = await api.ready(rect()));
   enter();
   sound.play(p);
 });
@@ -199,8 +211,7 @@ api.onReplace(async (next) => {
     await swap(next, 'done');
   } else {
     await leave('done');
-    current = null;
-    api.exited();
+    finish();
   }
   busy = false;
 });
@@ -214,7 +225,7 @@ for (const button of document.querySelectorAll('[data-action]')) {
 }
 $('close').addEventListener('click', () => current && respond(current.defaultWait));
 
-// Clicks pass through the transparent margin; only the card itself captures the mouse.
+// Clicks pass through the dim layer; only the card itself captures the mouse.
 card.addEventListener('pointerenter', () => api.setInteractive(true));
 card.addEventListener('pointerleave', () => api.setInteractive(false));
 

@@ -1,71 +1,33 @@
 {
   "name": "remindani",
   "productName": "RemindAni",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Reminders that are impossible to miss and a pleasure to dismiss.",
   "main": "src/main/index.js",
   "author": "RemindAni",
   "license": "MIT",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TrishaAdio/Reminder.git"
+  },
+  "updates": {
+    "owner": "TrishaAdio",
+    "repo": "Reminder"
+  },
   "scripts": {
     "start": "electron .",
     "test": "node --test test/*.test.js",
     "assets": "node scripts/build-icons.mjs && node scripts/build-sounds.mjs",
-    "dist": "electron-builder --win nsis --x64"
+    "dist": "electron-builder --win nsis --x64 --publish never",
+    "release": "node scripts/release.mjs"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9"
   },
   "devDependencies": {
     "@resvg/resvg-js": "2.6.2",
     "electron": "44.7.0",
     "electron-builder": "26.15.3"
-  },
-  "build": {
-    "appId": "com.remindani.app",
-    "productName": "RemindAni",
-    "copyright": "Copyright © 2026 RemindAni",
-    "directories": {
-      "output": "dist",
-      "buildResources": "build"
-    },
-    "files": [
-      "src/**/*",
-      "assets/**/*",
-      "package.json"
-    ],
-    "asar": true,
-    "electronLanguages": [
-      "en-US"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "build/icon.ico",
-      "requestedExecutionLevel": "asInvoker",
-      "legalTrademarks": "RemindAni"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowElevation": true,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": "always",
-      "createStartMenuShortcut": true,
-      "shortcutName": "RemindAni",
-      "uninstallDisplayName": "RemindAni",
-      "runAfterFinish": true,
-      "deleteAppDataOnUninstall": false,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerSidebar": "build/installerSidebar.bmp",
-      "uninstallerSidebar": "build/installerSidebar.bmp",
-      "installerHeader": "build/installerHeader.bmp",
-      "include": "build/installer.nsh",
-      "artifactName": "RemindAni-Setup-${version}.${ext}"
-    }
   }
 }

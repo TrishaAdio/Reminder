@@ -14,13 +14,16 @@ const SOUNDS = [
   { id: 'pluck', name: 'Pluck' },
 ];
 
+const ICONS = ['moon', 'book', 'drop', 'eye', 'stretch', 'sun', 'pill', 'cup', 'flag'];
+
 const PRESETS = [
   {
     id: 'bedtime',
     name: 'Bed time',
     icon: 'moon',
+    blurb: 'A nudge to put the screen away.',
     message: 'Time to wind down',
-    note: 'Screens off in 15 minutes.',
+    note: 'Lights low, phone on the charger.',
     schedule: { type: 'daily', time: '22:30', days: ALL_DAYS },
     sound: 'tide',
     repeatSound: false,
@@ -29,6 +32,7 @@ const PRESETS = [
     id: 'water',
     name: 'Drink water',
     icon: 'drop',
+    blurb: 'Once an hour while you work.',
     message: 'Have a glass of water',
     note: 'A few sips counts too.',
     schedule: { type: 'interval', every: 60, from: '09:00', to: '18:00', days: WEEKDAYS },
@@ -39,8 +43,9 @@ const PRESETS = [
     id: 'eyes',
     name: 'Rest your eyes',
     icon: 'eye',
+    blurb: '20-20-20: every 20 minutes, 20 feet, 20 seconds.',
     message: 'Look 20 feet away',
-    note: 'Pick something across the room and hold it for 20 seconds.',
+    note: 'Find something across the room and hold it for 20 seconds.',
     schedule: { type: 'interval', every: 20, from: '09:00', to: '18:00', days: WEEKDAYS },
     sound: 'glass',
     repeatSound: false,
@@ -49,8 +54,9 @@ const PRESETS = [
     id: 'stretch',
     name: 'Stretch',
     icon: 'stretch',
+    blurb: 'A reason to stand up every 50 minutes.',
     message: 'Stand up and stretch',
-    note: 'Shoulders back, reach up, take a few steps.',
+    note: 'Roll your shoulders, reach up, walk to the window and back.',
     schedule: { type: 'interval', every: 50, from: '09:00', to: '18:00', days: WEEKDAYS },
     sound: 'marimba',
     repeatSound: false,
@@ -59,16 +65,18 @@ const PRESETS = [
     id: 'medicine',
     name: 'Take medicine',
     icon: 'pill',
+    blurb: 'Every morning, and it keeps asking until you answer.',
     message: 'Take your medicine',
-    note: 'Morning dose, with a glass of water.',
+    note: 'Morning dose. With food if the label says so.',
     schedule: { type: 'daily', time: '08:30', days: ALL_DAYS },
     sound: 'chime',
     repeatSound: true,
   },
   {
     id: 'custom',
-    name: 'Reminder',
+    name: 'New reminder',
     icon: 'flag',
+    blurb: 'For anything the presets don’t cover.',
     message: '',
     note: '',
     schedule: { type: 'daily', time: '09:00', days: WEEKDAYS },
@@ -77,7 +85,6 @@ const PRESETS = [
   },
 ];
 
-const ICONS = new Set(PRESETS.map((p) => p.icon));
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const AUDIO_EXT = new Set(['.mp3', '.wav', '.m4a', '.ogg']);
 
@@ -94,8 +101,13 @@ function fromPreset(presetId, now) {
     schedule: structuredClone(p.schedule),
     sound: { kind: 'builtin', id: p.sound },
     repeatSound: p.repeatSound,
+    wait: null,
     createdAt: now,
   };
+}
+
+function duplicate(reminder, now) {
+  return { ...structuredClone(reminder), id: randomUUID(), name: `${reminder.name} copy`.slice(0, 60), createdAt: now };
 }
 
 function text(value, max) {
@@ -142,12 +154,18 @@ function applyPatch(reminder, patch, soundExists) {
   if ('name' in patch) next.name = text(patch.name, 60) ?? next.name;
   if ('message' in patch) next.message = text(patch.message, 80) ?? next.message;
   if ('note' in patch) next.note = text(patch.note, 160) ?? next.note;
-  if ('icon' in patch && ICONS.has(patch.icon)) next.icon = patch.icon;
+  if ('icon' in patch && ICONS.includes(patch.icon)) next.icon = patch.icon;
   if ('enabled' in patch && typeof patch.enabled === 'boolean') next.enabled = patch.enabled;
   if ('repeatSound' in patch && typeof patch.repeatSound === 'boolean') next.repeatSound = patch.repeatSound;
+  if ('wait' in patch && [null, 2, 3].includes(patch.wait)) next.wait = patch.wait;
   if ('schedule' in patch) next.schedule = schedule(patch.schedule, reminder.schedule);
   if ('sound' in patch) next.sound = sound(patch.sound, reminder.sound, soundExists);
   return next;
 }
 
-module.exports = { PRESETS, SOUNDS, AUDIO_EXT, fromPreset, applyPatch };
+// Reminders saved by 1.0 lack newer fields.
+function upgrade(reminder) {
+  return { wait: null, ...reminder, icon: ICONS.includes(reminder.icon) ? reminder.icon : 'flag' };
+}
+
+module.exports = { PRESETS, SOUNDS, ICONS, AUDIO_EXT, fromPreset, duplicate, applyPatch, upgrade };

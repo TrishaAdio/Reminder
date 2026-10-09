@@ -35,9 +35,3 @@ export function leaveItem(el) {
     : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(0.98)' }];
   animate(el, keyframes, reducedMotion() ? FADE : 'exit').then(() => el.remove());
 }
-
-// Switching views should feel immediate, so it uses the overshoot-free exit spring.
-export function fadeIn(el) {
-  if (reducedMotion()) return animate(el, [{ opacity: 0 }, { opacity: 1 }], FADE);
-  return animate(el, [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], 'exit');
-}

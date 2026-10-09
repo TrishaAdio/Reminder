@@ -1,7 +1,11 @@
 'use strict';
 
-const { app, dialog, ipcMain, shell } = require('electron');
-const { PRESETS, SOUNDS, fromPreset, applyPatch } = require('./reminders');
+const { app, dialog, ipcMain, nativeTheme, shell } = require('electron');
+const { PRESETS, SOUNDS, ICONS, fromPreset, duplicate, applyPatch } = require('./reminders');
+
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+const POSITIONS = ['top', 'top-right', 'bottom-right', 'center'];
+const THEMES = ['system', 'light', 'dark'];
 
 const loginItem = {
   options() {
@@ -17,36 +21,42 @@ const loginItem = {
   },
 };
 
-function registerIpc({ store, engine, popup, env, mainWindow }) {
+function registerIpc({ store, engine, popup, updates, env, mainWindow }) {
+  const { data } = store;
   const snapshot = () => ({
     reminders: store.data.reminders,
     runtime: Object.fromEntries(
-      Object.entries(store.data.runtime).map(([id, st]) => [id, { status: st.status, nextAt: st.nextAt }]),
+      Object.entries(store.data.runtime).map(([id, st]) => [id, { status: st.status, nextAt: st.nextAt, since: st.since ?? null }]),
     ),
+    today: engine.today(),
+    muted: engine.muted,
     settings: { ...store.data.settings, openAtLogin: loginItem.get() },
     sounds: SOUNDS,
-    presets: PRESETS.map(({ id, name, icon, schedule }) => ({ id, name, icon, schedule })),
+    icons: ICONS,
+    presets: PRESETS.map(({ id, name, icon, blurb, schedule }) => ({ id, name, icon, blurb, schedule })),
+    update: updates.state,
     env: { locale: env.locale, hourCycle: env.hourCycle, dataPath: store.dir, version: app.getVersion() },
   });
 
-  const broadcast = () => {
-    if (!mainWindow.isDestroyed()) mainWindow.webContents.send('state:changed', snapshot());
+  const send = (channel, value) => {
+    if (!mainWindow.isDestroyed()) mainWindow.webContents.send(channel, value);
   };
+  const broadcast = () => send('state:changed', snapshot());
   engine.on('change', broadcast);
+  updates.on('change', (state) => send('update:state', state));
 
   const handle = (channel, fn) =>
     ipcMain.handle(channel, (event, ...args) => (event.sender === mainWindow.webContents ? fn(...args) : null));
+  const find = (id) => store.data.reminders.findIndex((r) => r.id === id);
 
   const update = (id, patch) => {
-    const list = store.data.reminders;
-    const i = list.findIndex((r) => r.id === id);
+    const i = find(id);
     if (i < 0) return null;
-    const prev = list[i];
+    const prev = store.data.reminders[i];
     const next = applyPatch(prev, patch, (file) => store.soundExists(file));
-    list[i] = next;
+    store.data.reminders[i] = next;
     if (!next.enabled) popup.remove(id);
     engine.changed(prev, next);
-    if (prev.sound !== next.sound) store.pruneSounds();
     return next;
   };
 
@@ -61,15 +71,36 @@ function registerIpc({ store, engine, popup, env, mainWindow }) {
 
   handle('reminder:update', (id, patch) => update(id, patch ?? {}));
 
-  handle('reminder:delete', (id) => {
-    store.data.reminders = store.data.reminders.filter((r) => r.id !== id);
-    popup.remove(id);
-    engine.removed(id);
-    store.pruneSounds();
+  handle('reminder:duplicate', (id) => {
+    const i = find(id);
+    if (i < 0) return null;
+    const copy = duplicate(store.data.reminders[i], Date.now());
+    store.data.reminders.splice(i + 1, 0, copy);
+    engine.changed(null, copy);
+    return copy.id;
   });
 
-  handle('reminder:preview', (id) => {
-    if (store.data.reminders.some((r) => r.id === id)) popup.enqueue([id], true);
+  // The renderer keeps what it gets back so Undo can put the reminder back exactly.
+  handle('reminder:delete', (id) => {
+    const index = find(id);
+    if (index < 0) return null;
+    const [reminder] = store.data.reminders.splice(index, 1);
+    const state = store.data.runtime[id] ?? null;
+    popup.remove(id);
+    engine.removed(id);
+    return { reminder, index, state };
+  });
+
+  handle('reminder:restore', (deleted) => {
+    if (!deleted?.reminder?.id || find(deleted.reminder.id) >= 0) return false;
+    const list = store.data.reminders;
+    list.splice(Math.min(Math.max(0, deleted.index | 0), list.length), 0, deleted.reminder);
+    engine.restored(deleted.reminder, deleted.state);
+    return true;
+  });
+
+  handle('reminder:test', (id) => {
+    if (find(id) >= 0) popup.enqueue([id], true);
   });
 
   handle('sound:choose', async (id) => {
@@ -86,21 +117,45 @@ function registerIpc({ store, engine, popup, env, mainWindow }) {
     }
   });
 
+  const setters = {
+    defaultWait: (v) => [2, 3].includes(v) && ((data.settings.defaultWait = v), true),
+    volume: (v) => typeof v === 'number' && ((data.settings.volume = Math.min(1, Math.max(0, v))), true),
+    openAtLogin: (v) => typeof v === 'boolean' && (loginItem.set(v), true),
+    dim: (v) => typeof v === 'boolean' && ((data.settings.dim = v), true),
+    position: (v) => POSITIONS.includes(v) && ((data.settings.position = v), true),
+    theme: (v) => {
+      if (!THEMES.includes(v)) return false;
+      data.settings.theme = v;
+      nativeTheme.themeSource = v;
+      return true;
+    },
+    quiet: (v) => {
+      if (!v || typeof v.enabled !== 'boolean' || !TIME.test(v.from) || !TIME.test(v.to)) return false;
+      data.settings.quiet = { enabled: v.enabled, from: v.from, to: v.to };
+      return true;
+    },
+  };
+
   handle('settings:set', (key, value) => {
-    const { settings } = store.data;
-    if (key === 'defaultWait' && (value === 2 || value === 3)) settings.defaultWait = value;
-    else if (key === 'volume' && typeof value === 'number') settings.volume = Math.min(1, Math.max(0, value));
-    else if (key === 'openAtLogin' && typeof value === 'boolean') loginItem.set(value);
-    else return;
-    store.save();
-    broadcast();
+    if (setters[key]?.(value)) engine.commit();
   });
+
+  handle('pause:set', (kind) => {
+    if (['30m', '1h', 'tomorrow', 'resume'].includes(kind)) engine.pause(kind);
+  });
+
+  handle('update:check', () => updates.check(true));
+  handle('update:download', () => updates.download());
+  handle('update:retry', () => updates.retry());
+  handle('update:install', () => updates.install());
 
   handle('app:show-data-folder', () => shell.openPath(store.dir));
 
   ipcMain.on('window:close', (event) => {
     if (event.sender === mainWindow.webContents) mainWindow.close();
   });
+
+  return { navigate: (to) => send('navigate', to) };
 }
 
 module.exports = { registerIpc };

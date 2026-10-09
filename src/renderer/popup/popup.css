@@ -4,62 +4,132 @@ body {
   overflow: hidden;
 }
 
-/* Matches MARGIN in src/main/popup.js: room for the shadow and the exit travel. */
-body {
-  padding: 20px 28px 0;
+:root {
+  --popup: #ffffff;
+  --peek: #f8f7f4;
+  --dim: rgba(24, 18, 10, 0.22);
 }
 
-.card {
-  position: relative;
-  width: 420px;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --popup: #262422;
+    --peek: #1f1d1b;
+    --dim: rgba(0, 0, 0, 0.42);
+  }
+}
+
+/* The window covers the work area; the dim layer fades in behind the card. Clicks on it
+   pass through to whatever is underneath (see setIgnoreMouseEvents in src/main/popup.js). */
+.dim {
+  position: fixed;
+  inset: 0;
+  background: var(--dim);
   opacity: 0;
 }
 
-/* The shadow lives on its own layer and never animates by itself, so it is rasterised once. */
-.shadow {
+.stage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  padding: 40px;
+}
+
+.pos-top .stage { justify-content: center; align-items: flex-start; }
+.pos-top-right .stage { justify-content: flex-end; align-items: flex-start; padding: 24px; }
+.pos-bottom-right .stage { justify-content: flex-end; align-items: flex-end; padding: 24px; }
+.pos-center .stage { justify-content: center; align-items: center; }
+
+.card {
+  position: relative;
+  width: 460px;
+  opacity: 0;
+}
+
+/* Shadow and peeks are separate layers that only move or fade, so they rasterise once. */
+.shadow,
+.peek {
   position: absolute;
   inset: 0;
-  border-radius: var(--r-card);
-  box-shadow: var(--shadow-popup);
+  border-radius: 32px;
 }
+
+.shadow {
+  box-shadow: var(--shadow-lift);
+}
+
+/* Cards waiting in the queue peek out from under this one. */
+.peek {
+  background: var(--peek);
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transition: opacity var(--exit-duration) var(--exit-easing), transform var(--layout-duration) var(--layout-easing);
+}
+
+.peek-1 { transform: translateY(0) scale(1); }
+.peek-2 { transform: translateY(0) scale(1); }
+.queued-1 .peek-1,
+.queued-2 .peek-1 { opacity: 1; transform: translateY(10px) scale(0.955); }
+.queued-2 .peek-2 { opacity: 1; transform: translateY(20px) scale(0.91); }
 
 .surface {
   position: relative;
-  border-radius: var(--r-card);
+  border-radius: 32px;
   background: var(--popup);
+  box-shadow: var(--highlight);
   overflow: hidden;
 }
 
+/* Card 32 → 20 inset → tile 12 (concentric). */
 .content {
   display: grid;
-  grid-template-columns: 40px 1fr 28px;
-  column-gap: var(--s3);
-  padding: var(--s5) var(--s3) var(--s4) var(--s5);
+  grid-template-columns: 56px minmax(0, 1fr) 28px;
+  column-gap: var(--s4);
+  padding: var(--s5) var(--s4) var(--s4) var(--s5);
 }
 
-.badge {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--accent-tint);
-  color: var(--accent);
+.tile-wrap {
+  position: relative;
+  width: 56px;
+  height: 56px;
 }
 
-.badge .icon {
-  width: 22px;
-  height: 22px;
+.tile-wrap .tile {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+}
+
+.tile-wrap .tile .icon {
+  width: 30px;
+  height: 30px;
+}
+
+/* Idle motion: a soft ring leaves the tile every few seconds. */
+.pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  box-shadow: 0 0 0 2px var(--ink);
+  opacity: 0;
+}
+
+.showing .pulse {
+  animation: pulse 2.8s var(--exit-easing) 0.6s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.5; transform: scale(1); }
+  45%, 100% { opacity: 0; transform: scale(1.32); }
 }
 
 .text {
   min-width: 0;
-  min-height: 75px;
+  padding-top: 2px;
 }
 
 .eyebrow {
-  color: var(--text-2);
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -86,13 +156,13 @@ body {
 
 .queue {
   margin-top: var(--s2);
+  font-weight: 500;
   color: var(--text-2);
 }
 
 .close {
   width: 28px;
   height: 28px;
-  margin-top: -4px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -116,34 +186,26 @@ body {
   color: var(--text);
 }
 
-.close:active {
-  background: var(--fill-press);
-}
-
+/* Card 32 → 16 inset → buttons 16 (concentric). */
 .actions {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.3fr;
+  grid-template-columns: 1fr 1fr 1.35fr;
   gap: var(--s2);
-  padding: var(--s1) var(--s3) var(--s3);
+  padding: var(--s1) var(--s4) var(--s4);
 }
 
 .action {
   --button-bg: var(--fill);
   position: relative;
-  height: 44px;
-  border-radius: var(--r-card-button);
+  height: 52px;
+  border-radius: 16px;
   background: var(--button-bg);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
 }
 
-.action:hover {
-  --button-bg: var(--fill-hover);
-}
-
-.action:active {
-  --button-bg: var(--fill-press);
-}
+.action:hover { --button-bg: var(--fill-hover); }
+.action:active { --button-bg: var(--fill-press); }
 
 .action.primary {
   --button-bg: var(--accent);
@@ -151,19 +213,14 @@ body {
   font-weight: 600;
 }
 
-.action.primary:hover {
-  --button-bg: var(--accent-hover);
-}
-
-.action.primary:active {
-  --button-bg: var(--accent-press);
-}
+.action.primary:hover { --button-bg: var(--accent-hover); }
+.action.primary:active { --button-bg: var(--accent-press); }
 
 .label {
   display: inline-block;
 }
 
-/* The check "draws" by sliding a cover of the button colour off it: transform only. */
+/* The check draws in by sliding a cover of the button colour off it: transform only. */
 .tick {
   position: absolute;
   inset: 0;
@@ -175,14 +232,15 @@ body {
 
 .tick-mark {
   position: relative;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   overflow: hidden;
 }
 
 .tick-mark .icon {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
+  stroke-width: 2.25;
 }
 
 .tick-cover {
@@ -191,8 +249,9 @@ body {
   background: var(--button-bg);
 }
 
-/* Solid fallback: no transparency available, so no radius, no shadow, a plain hairline. */
-.solid body {
+/* Solid fallback: no transparency, so no radius, shadow, dim or peeks; a plain hairline. */
+.solid .stage {
+  position: static;
   padding: 0;
 }
 
@@ -200,15 +259,23 @@ body {
   width: 100vw;
 }
 
-.solid .shadow {
+.solid .dim,
+.solid .shadow,
+.solid .peek {
   display: none;
 }
 
 .solid .surface {
   border-radius: 0;
-  border: 1px solid var(--separator);
+  box-shadow: inset 0 0 0 1px var(--separator);
 }
 
 .solid .action {
   border-radius: var(--r-control);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .showing .pulse {
+    animation: none;
+  }
 }

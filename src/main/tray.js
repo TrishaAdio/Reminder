@@ -15,22 +15,35 @@ function iconPath() {
   return path.join(TRAY_DIR, `${dark ? 'tray-white' : 'tray-black'}.${ext}`);
 }
 
-function createTray({ onOpen, onQuit, describeNext }) {
+// `describe()` returns { next, pausedUntil, update } as display strings or null.
+function createTray({ describe, actions }) {
   const tray = new Tray(iconPath());
-  tray.on('click', onOpen);
+  tray.on('click', actions.open);
   nativeTheme.on('updated', () => tray.setImage(iconPath()));
 
   const refresh = () => {
-    const next = describeNext();
-    tray.setToolTip(next ? `RemindAni\nNext: ${next}` : 'RemindAni');
-    tray.setContextMenu(
-      Menu.buildFromTemplate([
-        { label: 'Open RemindAni', click: onOpen },
-        { label: next ? `Next: ${next}` : 'Nothing scheduled', enabled: false },
-        { type: 'separator' },
-        { label: 'Quit RemindAni', click: onQuit },
-      ]),
-    );
+    const { next, paused, update } = describe();
+    const status = paused ? `Paused until ${paused}` : next ? `Next: ${next}` : 'Nothing scheduled';
+    tray.setToolTip(`RemindAni\n${status}`);
+    const template = [
+      { label: 'Open RemindAni', click: actions.open },
+      { label: status, enabled: false },
+      { type: 'separator' },
+      paused
+        ? { label: 'Resume reminders', click: () => actions.pause('resume') }
+        : {
+            label: 'Pause reminders',
+            submenu: [
+              { label: 'For 30 minutes', click: () => actions.pause('30m') },
+              { label: 'For 1 hour', click: () => actions.pause('1h') },
+              { label: 'Until tomorrow', click: () => actions.pause('tomorrow') },
+            ],
+          },
+    ];
+    if (update === 'ready') template.push({ label: 'Restart to update', click: actions.install });
+    else if (update) template.push({ label: `Update available (${update})`, click: actions.openUpdates });
+    template.push({ type: 'separator' }, { label: 'Quit RemindAni', click: actions.quit });
+    tray.setContextMenu(Menu.buildFromTemplate(template));
   };
   refresh();
   return { refresh, bounds: () => tray.getBounds() };

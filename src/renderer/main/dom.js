@@ -5,6 +5,8 @@ export function h(tag, props = {}, ...children) {
   for (const [key, value] of Object.entries(props)) {
     if (value == null || value === false) continue;
     if (key === 'class') el.className = value;
+    // CSSOM writes are allowed by the CSP; style attributes would not be.
+    else if (key === 'style') el.style.cssText = value;
     else if (key === 'html') el.innerHTML = value;
     else if (key.startsWith('on')) el.addEventListener(key.slice(2), value);
     else if (PROPERTIES.has(key)) el[key] = value;

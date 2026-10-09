@@ -4,15 +4,13 @@ const path = require('node:path');
 const { EventEmitter } = require('node:events');
 const { BrowserWindow, ipcMain, screen } = require('electron');
 
-const CARD_WIDTH = 420;
-// The transparent window is larger than the card so the shadow and the exit travel have room.
-const MARGIN = { top: 20, side: 28 };
-const FRAME = { width: CARD_WIDTH + MARGIN.side * 2, height: 340 };
+// Solid fallback: no transparency, so the window is the card and sits at the chosen spot.
+const SOLID = { width: 460, height: 260, margin: 24 };
 
 function soundUrl(sound) {
   return sound.kind === 'file'
-    ? `app://sound/user/${encodeURIComponent(sound.file)}`
-    : `app://sound/builtin/${sound.id}.wav`;
+    ? `app://ui/sound/user/${encodeURIComponent(sound.file)}`
+    : `app://ui/sound/builtin/${sound.id}.wav`;
 }
 
 class Popup extends EventEmitter {
@@ -24,12 +22,12 @@ class Popup extends EventEmitter {
     this.queue = [];
     this.current = null;
     this.phase = 'hidden';
-    this.bounds = null;
+    this.area = null;
   }
 
   init() {
     const own = (handler) => (event, ...args) => (event.sender === this.win?.webContents ? handler(...args) : null);
-    ipcMain.handle('popup:ready', own((height) => this.reveal(height)));
+    ipcMain.handle('popup:ready', own((rect) => this.reveal(rect)));
     ipcMain.handle('popup:answer', own((id, action) => this.answer(id, action)));
     ipcMain.on('popup:exited', own(() => this.exited()));
     ipcMain.on('popup:interactive', own((on) => {
@@ -39,18 +37,24 @@ class Popup extends EventEmitter {
     return this.ensureWindow();
   }
 
-  // Transparency needs GPU compositing and the user's consent; either can change while running.
+  get visible() {
+    return this.phase !== 'hidden';
+  }
+
+  // GPU compositing is reported late and transparency can be switched off at any time,
+  // so the window is rebuilt whenever the answer changes.
   async ensureWindow() {
     const solid = this.wantsSolid();
     if (this.win && !this.win.isDestroyed() && solid === this.solid) return;
     this.win?.destroy();
     this.solid = solid;
     this.win = new BrowserWindow({
-      ...(this.solid ? { width: CARD_WIDTH, height: 220 } : FRAME),
+      width: SOLID.width,
+      height: SOLID.height,
       show: false,
       frame: false,
-      transparent: !this.solid,
-      backgroundColor: this.solid ? undefined : '#00000000',
+      transparent: !solid,
+      backgroundColor: solid ? undefined : '#00000000',
       hasShadow: false,
       resizable: false,
       movable: false,
@@ -59,6 +63,7 @@ class Popup extends EventEmitter {
       fullscreenable: false,
       skipTaskbar: true,
       alwaysOnTop: true,
+      focusable: true,
       title: 'RemindAni reminder',
       webPreferences: {
         preload: path.join(__dirname, '..', 'preload', 'popup.js'),
@@ -70,7 +75,7 @@ class Popup extends EventEmitter {
       },
     });
     this.win.setAlwaysOnTop(true, 'screen-saver');
-    if (!this.solid) this.win.setIgnoreMouseEvents(true, { forward: true });
+    if (!solid) this.win.setIgnoreMouseEvents(true, { forward: true });
 
     // Alt+F4 counts as closing the card, which means the default wait.
     this.win.on('close', (event) => {
@@ -78,7 +83,6 @@ class Popup extends EventEmitter {
       event.preventDefault();
       if (this.current) this.send('popup:close');
     });
-
     await this.win.loadURL('app://ui/popup/popup.html');
   }
 
@@ -91,6 +95,7 @@ class Popup extends EventEmitter {
     else this.send('popup:queue', this.queue.length);
   }
 
+  // A reminder that was deleted or switched off must not stay on screen.
   remove(id) {
     this.queue = this.queue.filter((q) => q.id !== id);
     if (this.current?.id !== id) return this.send('popup:queue', this.queue.length);
@@ -118,50 +123,61 @@ class Popup extends EventEmitter {
       message: r.message.trim() || r.name.trim() || 'Reminder',
       note: r.note.trim(),
       icon: r.icon,
-      time: this.locale.formatTime(st?.lastSlot ?? Date.now()),
+      time: this.locale.formatTime(preview ? Date.now() : (st?.lastSlot ?? Date.now())),
       sound: soundUrl(r.sound),
       repeat: r.repeatSound,
       volume: settings.volume,
-      defaultWait: settings.defaultWait,
+      defaultWait: r.wait ?? settings.defaultWait,
+      position: settings.position,
+      dim: settings.dim && !this.solid,
       remaining: this.queue.length,
       solid: this.solid,
       perf: this.perf,
     };
   }
 
-  reveal(cardHeight) {
+  reveal(rect) {
     if (!this.win.isVisible()) {
-      this.place(cardHeight);
+      this.place(rect);
       this.win.showInactive();
       this.win.moveTop();
     } else if (this.solid) {
-      this.win.setSize(CARD_WIDTH, Math.ceil(cardHeight));
+      this.win.setSize(SOLID.width, Math.ceil(rect.height));
     }
-    return { toward: this.towardTray(cardHeight) };
+    return { toward: this.towardTray(rect) };
   }
 
-  place(cardHeight) {
-    const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
-    const size = this.solid ? { width: CARD_WIDTH, height: Math.ceil(cardHeight) } : FRAME;
-    const bounds = {
-      x: Math.round(area.x + (area.width - size.width) / 2),
-      y: area.y + (this.solid ? 28 : 8),
-      ...size,
-    };
+  place(rect) {
+    this.area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
+    const bounds = this.solid ? this.solidBounds(rect.height) : this.area;
     // Moving across monitors with different scaling applies the old factor once; repeating settles it.
     this.win.setBounds(bounds);
     this.win.setBounds(bounds);
-    this.bounds = bounds;
   }
 
-  towardTray(cardHeight) {
-    const b = this.bounds;
-    const from = { x: b.x + b.width / 2, y: b.y + (this.solid ? 0 : MARGIN.top) + cardHeight / 2 };
+  solidBounds(height) {
+    const a = this.area;
+    const w = SOLID.width;
+    const h = Math.ceil(height);
+    const m = SOLID.margin;
+    const spots = {
+      top: { x: a.x + (a.width - w) / 2, y: a.y + m },
+      'top-right': { x: a.x + a.width - w - m, y: a.y + m },
+      'bottom-right': { x: a.x + a.width - w - m, y: a.y + a.height - h - m },
+      center: { x: a.x + (a.width - w) / 2, y: a.y + (a.height - h) / 2 },
+    };
+    const spot = spots[this.store.data.settings.position] ?? spots.top;
+    return { x: Math.round(spot.x), y: Math.round(spot.y), width: w, height: h };
+  }
+
+  towardTray(rect) {
+    const b = this.win.getBounds();
+    const from = { x: b.x + rect.x + rect.width / 2, y: b.y + rect.y + rect.height / 2 };
     const tray = this.trayBounds();
-    const area = screen.getDisplayMatching(b).workArea;
+    const a = this.area ?? screen.getDisplayMatching(b).workArea;
     const to = tray && tray.width
       ? { x: tray.x + tray.width / 2, y: tray.y + tray.height / 2 }
-      : { x: area.x + area.width, y: area.y + area.height };
+      : { x: a.x + a.width, y: a.y + a.height };
     const dx = to.x - from.x;
     const dy = to.y - from.y;
     const len = Math.hypot(dx, dy) || 1;
@@ -180,9 +196,11 @@ class Popup extends EventEmitter {
 
   exited() {
     if (this.queue.length) return this.present();
+    this.current = null;
     this.phase = 'hidden';
     this.win.hide();
     if (!this.solid) this.win.setIgnoreMouseEvents(true, { forward: true });
+    this.emit('hidden');
   }
 
   send(channel, ...args) {

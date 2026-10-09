@@ -77,8 +77,8 @@ export function stepper({ value, format, label, onChange }) {
       html: icon(name),
       onclick: () => move(delta),
     });
-  const less = button('minus', 'Less often', -1);
-  const more = button('plus', 'More time between', 1);
+  const less = button('minus', 'Shorter interval', -1);
+  const more = button('plus', 'Longer interval', 1);
   const output = h('span', {
     class: 'stepper-value tnum',
     role: 'spinbutton',
@@ -206,18 +206,29 @@ export function timeField({ value, fmt, label, onChange }) {
     }
   }
 
+  const step = (seg, delta) => {
+    if (seg === hourSeg) hours = (hours + delta + 24) % 24;
+    else if (seg === minuteSeg) minutes = (minutes + delta + 60) % 60;
+    else hours = (hours + 12) % 24;
+    typed = '';
+    commit();
+  };
+
   el.addEventListener('focusin', () => (typed = ''));
+  // Mouse users get the wheel, and the AM/PM segment flips on click.
+  el.addEventListener('wheel', (e) => {
+    if (!segments.includes(e.target)) return;
+    e.preventDefault();
+    e.target.focus();
+    step(e.target, e.deltaY < 0 ? 1 : -1);
+  });
+  periodSeg?.addEventListener('click', () => step(periodSeg, 1));
   el.addEventListener('keydown', (e) => {
     const seg = e.target;
     const i = segments.indexOf(seg);
     if (i < 0) return;
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-      const delta = e.key === 'ArrowUp' ? 1 : -1;
-      if (seg === hourSeg) hours = (hours + delta + 24) % 24;
-      else if (seg === minuteSeg) minutes = (minutes + delta + 60) % 60;
-      else hours = (hours + 12) % 24;
-      typed = '';
-      commit();
+      step(seg, e.key === 'ArrowUp' ? 1 : -1);
     } else if (e.key === 'ArrowRight' && segments[i + 1]) {
       segments[i + 1].focus();
     } else if (e.key === 'ArrowLeft' && segments[i - 1]) {

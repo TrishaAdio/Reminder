@@ -10,30 +10,41 @@
   color-scheme: light dark;
   --font: 'Inter', 'Segoe UI Variable Text', 'Segoe UI', sans-serif;
 
-  --bg: #f7f6f4;
-  --sidebar: #eeece8;
-  --surface: #ffffff;
-  --popup: #ffffff;
-  --text: #1c1b19;
-  --text-2: #64615b;
-  --text-3: #7a766f;
-  --separator: rgba(28, 27, 25, 0.09);
-  --fill: rgba(28, 27, 25, 0.055);
-  --fill-hover: rgba(28, 27, 25, 0.085);
-  --fill-press: rgba(28, 27, 25, 0.12);
-  --track-off: rgba(28, 27, 25, 0.16);
-  --selection: rgba(28, 27, 25, 0.075);
+  /* Surfaces, back to front: window → card → raised (controls inside cards). */
+  --window: #f1efeb;
+  --card: #ffffff;
+  --raised: #f6f5f2;
+  --text: #1a1917;
+  --text-2: #5f5c56;
+  --text-3: #77736c;
+  --separator: rgba(30, 24, 16, 0.08);
+  --fill: rgba(30, 24, 16, 0.05);
+  --fill-hover: rgba(30, 24, 16, 0.08);
+  --fill-press: rgba(30, 24, 16, 0.12);
+  --track: rgba(30, 24, 16, 0.14);
+  --knob: #ffffff;
+  --thumb: #ffffff;
+  --inverse: #24221f;
+  --on-inverse: #f3f2ef;
+
   --accent: #a84f0a;
   --accent-hover: #974709;
   --accent-press: #853f08;
   --on-accent: #ffffff;
-  --accent-tint: rgba(168, 79, 10, 0.1);
-  --knob: #ffffff;
+  --accent-soft: rgba(168, 79, 10, 0.1);
   --text-selection: rgba(168, 79, 10, 0.2);
 
-  --shadow-popup: 0 1px 2px rgba(31, 22, 10, 0.06), 0 6px 16px rgba(31, 22, 10, 0.08),
-    0 18px 44px rgba(31, 22, 10, 0.14);
-  --shadow-knob: 0 1px 2px rgba(31, 22, 10, 0.12), 0 2px 6px rgba(31, 22, 10, 0.06);
+  /* One shadow recipe, two strengths. The highlight is the lit top edge of a raised surface. */
+  --highlight: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --shadow: 0 1px 2px rgba(40, 28, 14, 0.05), 0 8px 24px -10px rgba(40, 28, 14, 0.14);
+  --shadow-lift: 0 2px 4px rgba(40, 28, 14, 0.06), 0 24px 56px -16px rgba(40, 28, 14, 0.28);
+  --shadow-knob: 0 1px 2px rgba(40, 28, 14, 0.14), 0 2px 6px rgba(40, 28, 14, 0.08);
+
+  /* Preset tints: same lightness and chroma, only the hue moves. */
+  --tile-l: 0.93;
+  --tile-c: 0.035;
+  --ink-l: 0.47;
+  --ink-c: 0.085;
 
   --s1: 4px;
   --s2: 8px;
@@ -41,53 +52,72 @@
   --s4: 16px;
   --s5: 20px;
   --s6: 24px;
+  --s7: 28px;
   --s8: 32px;
   --s10: 40px;
 
-  /* Concentric: outer = inner + inset (see docs/DESIGN.md). */
-  --r-card: 24px;
-  --r-card-button: 12px;
-  --r-group: 12px;
-  --r-control: 8px;
-  --r-thumb: 6px;
-  --r-row: 8px;
+  --r-card: 20px;
+  --r-row: 12px;
+  --r-control: 10px;
+  --r-thumb: 8px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1b1a19;
-    --sidebar: #151413;
-    --surface: #262523;
-    --popup: #2b2927;
-    --text: #f4f3f0;
-    --text-2: #a9a59e;
-    --text-3: #8f8b84;
-    --separator: rgba(255, 255, 255, 0.08);
-    --fill: rgba(255, 255, 255, 0.07);
-    --fill-hover: rgba(255, 255, 255, 0.1);
-    --fill-press: rgba(255, 255, 255, 0.14);
-    --track-off: rgba(255, 255, 255, 0.18);
-    --selection: rgba(255, 255, 255, 0.08);
+    --window: #141312;
+    --card: #1f1e1c;
+    --raised: #2a2826;
+    --text: #f3f2ef;
+    --text-2: #a7a39c;
+    --text-3: #8e8a83;
+    --separator: rgba(255, 255, 255, 0.07);
+    --fill: rgba(255, 255, 255, 0.06);
+    --fill-hover: rgba(255, 255, 255, 0.09);
+    --fill-press: rgba(255, 255, 255, 0.13);
+    --track: rgba(255, 255, 255, 0.16);
+    --knob: #f3f2ef;
+    --thumb: #3a3835;
+    --inverse: #f3f2ef;
+    --on-inverse: #1a1917;
+
     --accent: #f0a040;
     --accent-hover: #f5b05a;
     --accent-press: #e4922f;
     --on-accent: #231505;
-    --accent-tint: rgba(240, 160, 64, 0.15);
-    --knob: #f4f3f0;
+    --accent-soft: rgba(240, 160, 64, 0.14);
     --text-selection: rgba(240, 160, 64, 0.32);
-    --shadow-popup: 0 1px 2px rgba(0, 0, 0, 0.2), 0 6px 16px rgba(0, 0, 0, 0.26),
-      0 18px 44px rgba(0, 0, 0, 0.42);
-    --shadow-knob: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.18);
+
+    --highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px -12px rgba(0, 0, 0, 0.6);
+    --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.4), 0 28px 64px -16px rgba(0, 0, 0, 0.7);
+    --shadow-knob: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.2);
+
+    --tile-l: 0.34;
+    --tile-c: 0.045;
+    --ink-l: 0.84;
+    --ink-c: 0.075;
   }
 }
 
-/* Type scale: six sizes, three weights. Tracking follows Inter's dynamic metrics. */
-.t-display { font-size: 24px; line-height: 30px; font-weight: 600; letter-spacing: -0.019em; }
-.t-title { font-size: 20px; line-height: 26px; font-weight: 600; letter-spacing: -0.017em; }
-.t-lead { font-size: 15px; line-height: 21px; font-weight: 400; letter-spacing: -0.009em; }
-.t-body { font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: -0.006em; }
-.t-callout { font-size: 13px; line-height: 18px; font-weight: 400; letter-spacing: -0.003em; }
-.t-caption { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0; }
+.tint-indigo { --hue: 278; }
+.tint-blue { --hue: 240; }
+.tint-green { --hue: 155; }
+.tint-orange { --hue: 52; }
+.tint-rose { --hue: 12; }
+.tint-sand { --hue: 82; }
+
+[class*='tint-'] {
+  --tile: oklch(var(--tile-l) var(--tile-c) var(--hue));
+  --ink: oklch(var(--ink-l) var(--ink-c) var(--hue));
+}
+
+/* Six sizes: 40 / 28 / 22 / 15 / 13 / 11. */
+.t-display { font-size: 40px; line-height: 44px; font-weight: 600; letter-spacing: -0.026em; }
+.t-title { font-size: 28px; line-height: 34px; font-weight: 600; letter-spacing: -0.021em; }
+.t-heading { font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -0.017em; }
+.t-body { font-size: 15px; line-height: 21px; font-weight: 400; letter-spacing: -0.009em; }
+.t-small { font-size: 13px; line-height: 18px; font-weight: 400; letter-spacing: -0.003em; }
+.t-micro { font-size: 11px; line-height: 14px; font-weight: 500; letter-spacing: 0.005em; }
 
 *,
 *::before,
@@ -107,13 +137,14 @@ body {
 
 body {
   font-family: var(--font);
-  font-size: 14px;
-  line-height: 20px;
-  letter-spacing: -0.006em;
+  font-size: 15px;
+  line-height: 21px;
+  letter-spacing: -0.009em;
   font-optical-sizing: auto;
   color: var(--text);
   user-select: none;
   cursor: default;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1,
@@ -151,6 +182,28 @@ svg.icon {
   stroke-linejoin: round;
 }
 
+svg.icon.solid {
+  fill: currentColor;
+}
+
+/* Preset tile: tinted square with the icon in the tint's ink. */
+.tile {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--tile);
+  color: var(--ink);
+}
+
+.tile .icon {
+  width: 22px;
+  height: 22px;
+}
+
 :focus {
   outline: none;
 }
@@ -168,7 +221,7 @@ svg.icon {
   font-variant-numeric: tabular-nums;
 }
 
-/* Spring curves are injected as custom properties by spring.js. */
+/* Press squashes to 0.97 instantly and springs back; curves come from spring.js. */
 .pressable {
   transition: transform var(--release-duration, 360ms) var(--release-easing, ease-out);
 }

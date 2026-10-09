@@ -11,6 +11,7 @@
 //   nextAt   epoch ms of the next fire, or null
 //   lastSlot epoch ms of the last scheduled occurrence that fired or was skipped (guards double-fires)
 //   firedAt  epoch ms when it became due
+//   since    epoch ms when nextAt was set (start of the countdown shown in the UI)
 
 const MINUTE = 60_000;
 const MISSED_GRACE = 10 * MINUTE;
@@ -74,8 +75,12 @@ function nextOccurrence(reminder, now, lastSlot = null) {
   return nextInterval(s, now);
 }
 
+function scheduled(reminder, now, lastSlot) {
+  return { status: 'scheduled', nextAt: nextOccurrence(reminder, now, lastSlot), lastSlot, firedAt: null, since: now };
+}
+
 function initialState(reminder, now) {
-  return { status: 'scheduled', nextAt: nextOccurrence(reminder, now), lastSlot: null, firedAt: null };
+  return scheduled(reminder, now, null);
 }
 
 // Applies an edit or toggle. A due reminder keeps its state so the card on screen stays consistent.
@@ -92,14 +97,9 @@ function restore(reminder, state, now) {
   if (!state) return initialState(reminder, now);
   if (state.status !== 'due') return state;
   if (state.firedAt != null && now - state.firedAt <= MISSED_GRACE) {
-    return { ...state, status: 'snoozed', nextAt: now, firedAt: null };
+    return { ...state, status: 'snoozed', nextAt: now, firedAt: null, since: now };
   }
-  return {
-    status: 'scheduled',
-    lastSlot: state.lastSlot,
-    nextAt: nextOccurrence(reminder, now, state.lastSlot),
-    firedAt: null,
-  };
+  return scheduled(reminder, now, state.lastSlot);
 }
 
 // Repairs schedules after the wall clock jumped backwards or the time zone changed.
@@ -114,46 +114,84 @@ function reconcile(reminders, states, now, clock) {
     const st = out[r.id];
     if (!r.enabled || !st) continue;
     if (st.status === 'scheduled') {
-      out[r.id] = { ...st, nextAt: nextOccurrence(r, now, st.lastSlot) };
+      out[r.id] = { ...st, nextAt: nextOccurrence(r, now, st.lastSlot), since: now };
     } else if (st.status === 'snoozed' && jumpedBack) {
       const remaining = Math.max(0, st.nextAt - clock.lastNow);
-      out[r.id] = { ...st, nextAt: now + remaining };
+      out[r.id] = { ...st, nextAt: now + remaining, since: now };
     }
   }
   return out;
 }
 
 // Returns the reminders that should fire now, earliest first. Anything later than the grace
-// window is skipped and rescheduled instead of firing stale.
-function tick(reminders, states, now) {
+// window, or anything that comes up while muted (paused or quiet hours), is skipped and
+// rescheduled instead of firing.
+function tick(reminders, states, now, muted = false) {
   const out = { ...states };
   const due = [];
+  const skipped = [];
   for (const r of reminders) {
     const st = out[r.id];
     if (!r.enabled || !st || st.status === 'due' || st.nextAt == null || st.nextAt > now) continue;
     const lastSlot = st.status === 'scheduled' ? st.nextAt : st.lastSlot;
-    if (now - st.nextAt <= MISSED_GRACE) {
+    if (!muted && now - st.nextAt <= MISSED_GRACE) {
       due.push({ id: r.id, at: st.nextAt });
-      out[r.id] = { status: 'due', nextAt: null, lastSlot, firedAt: now };
+      out[r.id] = { status: 'due', nextAt: null, lastSlot, firedAt: now, since: st.since ?? now };
     } else {
-      out[r.id] = { status: 'scheduled', nextAt: nextOccurrence(r, now, lastSlot), lastSlot, firedAt: null };
+      out[r.id] = scheduled(r, now, lastSlot);
+      skipped.push(r.id);
     }
   }
   due.sort((a, b) => a.at - b.at);
-  return { states: out, fire: due.map((d) => d.id) };
+  return { states: out, fire: due.map((d) => d.id), skipped };
 }
 
 function done(reminder, state, now) {
-  return {
-    status: 'scheduled',
-    lastSlot: state.lastSlot,
-    nextAt: nextOccurrence(reminder, now, state.lastSlot),
-    firedAt: null,
-  };
+  return scheduled(reminder, now, state.lastSlot);
 }
 
 function wait(state, now, minutes) {
-  return { ...state, status: 'snoozed', nextAt: now + minutes * MINUTE, firedAt: null };
+  return { ...state, status: 'snoozed', nextAt: now + minutes * MINUTE, firedAt: null, since: now };
+}
+
+function minuteOfDay(ms) {
+  const d = new Date(ms);
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+// Quiet hours run from `from` up to (not including) `to`, and may cross midnight.
+function inQuietHours(now, quiet) {
+  if (!quiet?.enabled) return false;
+  const toMin = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+  const m = minuteOfDay(now);
+  const from = toMin(quiet.from);
+  const to = toMin(quiet.to);
+  if (from === to) return false;
+  return from < to ? m >= from && m < to : m >= from || m < to;
+}
+
+function isMuted(now, settings) {
+  return (settings.pausedUntil != null && now < settings.pausedUntil) || inQuietHours(now, settings.quiet);
+}
+
+function pauseEnd(kind, now) {
+  if (kind === '30m') return now + 30 * MINUTE;
+  if (kind === '1h') return now + 60 * MINUTE;
+  if (kind === 'tomorrow') return dayStart(now, 1);
+  return null;
+}
+
+// Projects upcoming fires in [from, to) for the timeline. Interval reminders count from
+// whenever they are answered, so this assumes each one is answered on time.
+function occurrences(reminder, state, from, to, limit = 96) {
+  const out = [];
+  if (!reminder.enabled || !state || state.nextAt == null) return out;
+  let t = state.nextAt;
+  while (t != null && t < to && out.length < limit) {
+    if (t >= from) out.push(t);
+    t = nextOccurrence(reminder, t, t);
+  }
+  return out;
 }
 
 // An interval longer than its window, or no days at all, can never fire.
@@ -176,4 +214,8 @@ module.exports = {
   done,
   wait,
   canFire,
+  inQuietHours,
+  isMuted,
+  pauseEnd,
+  occurrences,
 };

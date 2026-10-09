@@ -14,13 +14,14 @@ function registerScheme() {
   ]);
 }
 
+// Sounds share the pages' origin: Web Audio reads silence from cross-origin media.
 function resolve(url, userSounds) {
   const { host, pathname } = new URL(url);
+  if (host !== 'ui') return null;
   const rel = decodeURIComponent(pathname);
-  if (host === 'ui') return inside(RENDERER, rel);
-  if (host === 'sound' && rel.startsWith('/builtin/')) return inside(BUILTIN_SOUNDS, rel.slice(9));
-  if (host === 'sound' && rel.startsWith('/user/')) return inside(userSounds, rel.slice(6));
-  return null;
+  if (rel.startsWith('/sound/builtin/')) return inside(BUILTIN_SOUNDS, rel.slice(15));
+  if (rel.startsWith('/sound/user/')) return inside(userSounds, rel.slice(12));
+  return inside(RENDERER, rel);
 }
 
 function inside(root, rel) {

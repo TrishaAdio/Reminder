@@ -1,7 +1,11 @@
 const DAY = 86_400_000;
+const MINUTE = 60_000;
 const WEEKDAYS = [1, 2, 3, 4, 5];
 
-const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+const startOfDay = (ms) => {
+  const d = new Date(ms);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+};
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 // 2024-01-07 was a Sunday, so day index d maps to 7 + d.
 const sampleDay = (d) => new Date(2024, 0, 7 + d);
@@ -12,11 +16,12 @@ export function minutesBetween(from, to) {
 }
 
 export function createFormat({ locale, hourCycle }) {
-  const time = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', hourCycle });
+  const timeFmt = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', hourCycle });
   const short = new Intl.DateTimeFormat(locale, { weekday: 'short' });
   const long = new Intl.DateTimeFormat(locale, { weekday: 'long' });
   const narrow = new Intl.DateTimeFormat(locale, { weekday: 'narrow' });
-  const periodParts = (h) =>
+  const hourOnly = new Intl.DateTimeFormat(locale, { hour: 'numeric', hourCycle });
+  const periodOf = (h) =>
     new Intl.DateTimeFormat(locale, { hour: 'numeric', hourCycle: 'h12' })
       .formatToParts(new Date(2024, 0, 1, h))
       .find((p) => p.type === 'dayPeriod')?.value;
@@ -24,7 +29,8 @@ export function createFormat({ locale, hourCycle }) {
   const firstDay = (info.getWeekInfo?.() ?? info.weekInfo)?.firstDay ?? 1;
   const weekOrder = Array.from({ length: 7 }, (_, i) => (firstDay + i) % 7);
 
-  const clock = (hhmm) => time.format(new Date(2024, 0, 1, Number(hhmm.slice(0, 2)), Number(hhmm.slice(3))));
+  const time = (ms) => timeFmt.format(ms);
+  const clock = (hhmm) => timeFmt.format(new Date(2024, 0, 1, Number(hhmm.slice(0, 2)), Number(hhmm.slice(3))));
 
   function days(list) {
     const set = new Set(list);
@@ -46,27 +52,54 @@ export function createFormat({ locale, hourCycle }) {
 
   const every = (minutes) => (minutes === 60 ? 'every hour' : `every ${duration(minutes)}`);
 
+  // "in 12 min", "in 2 h 5 min", "at 22:30", "tomorrow at 8:30", "Monday at 8:30"
+  function relative(at, now = Date.now()) {
+    const diff = at - now;
+    if (diff < MINUTE) return diff <= 0 ? 'now' : 'in less than a minute';
+    const mins = Math.ceil(diff / MINUTE);
+    if (mins < 60) return `in ${mins} min`;
+    const dayDiff = Math.round((startOfDay(at) - startOfDay(now)) / DAY);
+    if (mins < 6 * 60) {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return m ? `in ${h} h ${m} min` : `in ${h} h`;
+    }
+    if (dayDiff === 0) return `at ${time(at)}`;
+    if (dayDiff === 1) return `tomorrow at ${time(at)}`;
+    return `${long.format(at)} at ${time(at)}`;
+  }
+
+  // Compact form for list rows.
+  function soon(at, now = Date.now()) {
+    const diff = at - now;
+    if (diff < MINUTE) return 'now';
+    const mins = Math.ceil(diff / MINUTE);
+    if (mins < 60) return `${mins} min`;
+    const dayDiff = Math.round((startOfDay(at) - startOfDay(now)) / DAY);
+    if (mins < 6 * 60) return `${Math.floor(mins / 60)} h ${mins % 60 ? `${mins % 60} min` : ''}`.trim();
+    if (dayDiff === 0) return time(at);
+    return `${short.format(at)} ${time(at)}`;
+  }
+
   return {
     hourCycle,
-    periods: [periodParts(9) ?? 'AM', periodParts(21) ?? 'PM'],
+    periods: [periodOf(9) ?? 'AM', periodOf(21) ?? 'PM'],
     weekOrder,
     dayName: (d) => long.format(sampleDay(d)),
     dayLetter: (d) => narrow.format(sampleDay(d)),
+    hourLabel: (h) => hourOnly.format(new Date(2024, 0, 1, h)),
+    time,
     clock,
+    days,
     duration,
+    relative,
+    soon,
 
-    // Compact form for the sidebar: the active window lives in the detail view.
-    brief(s) {
+    // "Every day, 22:30" · "Weekdays, 8:30" · "Every hour, 9:00–18:00, weekdays"
+    schedule(s) {
       if (!s.days.length) return 'No days selected';
       const d = days(s.days);
-      if (s.type === 'daily') return d === 'every day' ? `Daily at ${clock(s.time)}` : `${capitalize(d)} at ${clock(s.time)}`;
-      return d === 'every day' ? capitalize(every(s.every)) : `${capitalize(every(s.every))}, ${d}`;
-    },
-
-    summary(s) {
-      if (!s.days.length) return 'No days selected';
-      const d = days(s.days);
-      if (s.type === 'daily') return d === 'every day' ? `Daily at ${clock(s.time)}` : `${capitalize(d)} at ${clock(s.time)}`;
+      if (s.type === 'daily') return `${capitalize(d)}, ${clock(s.time)}`;
       const base = `${capitalize(every(s.every))}, ${clock(s.from)}–${clock(s.to)}`;
       return d === 'every day' ? base : `${base}, ${d}`;
     },
@@ -75,14 +108,10 @@ export function createFormat({ locale, hourCycle }) {
       if (!reminder.enabled) return 'Off';
       if (!runtime) return '';
       if (runtime.status === 'due') return 'On screen now';
-      if (runtime.nextAt == null) return 'Never fires with these settings';
-      const at = new Date(runtime.nextAt);
-      const t = time.format(at);
-      const diff = Math.round((startOfDay(at) - startOfDay(new Date(now))) / DAY);
-      if (runtime.status === 'snoozed') return diff === 0 ? `Waiting, back at ${t}` : `Waiting, back ${long.format(at)} at ${t}`;
-      if (diff === 0) return `Today at ${t}`;
-      if (diff === 1) return `Tomorrow at ${t}`;
-      return `${long.format(at)} at ${t}`;
+      if (runtime.nextAt == null) return 'Never comes up with these settings';
+      const when = relative(runtime.nextAt, now);
+      if (runtime.status === 'snoozed') return `Waiting, back ${when}`;
+      return `Next ${when}`;
     },
   };
 }

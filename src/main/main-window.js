@@ -4,22 +4,22 @@ const path = require('node:path');
 const { BrowserWindow, nativeTheme } = require('electron');
 
 const ICON = path.join(__dirname, '..', '..', 'assets', 'icon.ico');
-const TITLE_BAR_HEIGHT = 40;
+const TITLE_BAR_HEIGHT = 48;
 
-// Mirrors --bg and --text in tokens.css so the native caption buttons sit flush with the page.
+// Mirrors --window and --text in tokens.css so the native caption buttons sit flush with the page.
 function chrome() {
   return nativeTheme.shouldUseDarkColors
-    ? { background: '#1B1A19', symbols: '#F4F3F0' }
-    : { background: '#F7F6F4', symbols: '#1C1B19' };
+    ? { background: '#141312', symbols: '#F3F2EF' }
+    : { background: '#F1EFEB', symbols: '#1A1917' };
 }
 
 function createMainWindow({ isQuitting }) {
   const { background, symbols } = chrome();
   const win = new BrowserWindow({
-    width: 960,
-    height: 660,
-    minWidth: 780,
-    minHeight: 540,
+    width: 1000,
+    height: 720,
+    minWidth: 820,
+    minHeight: 580,
     show: false,
     title: 'RemindAni',
     icon: ICON,

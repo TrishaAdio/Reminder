@@ -7,6 +7,7 @@ const scheduler = require('./scheduler');
 // Timers are armed for the next fire but never sleep longer than this, so wall-clock and
 // time-zone changes (which Windows does not announce to Node) are noticed within half a minute.
 const MAX_SLEEP = 30_000;
+const DAY = 86_400_000;
 const userSetZone = 'TZ' in process.env;
 
 function refreshZone() {
@@ -21,6 +22,7 @@ class Engine extends EventEmitter {
     this.store = store;
     this.timer = null;
     this.clock = { lastNow: null, lastZone: null };
+    this.muted = false;
   }
 
   get reminders() {
@@ -29,6 +31,10 @@ class Engine extends EventEmitter {
 
   get runtime() {
     return this.store.data.runtime;
+  }
+
+  get settings() {
+    return this.store.data.settings;
   }
 
   start() {
@@ -45,13 +51,28 @@ class Engine extends EventEmitter {
     clearTimeout(this.timer);
     const now = Date.now();
     const zone = refreshZone();
+    let changed = false;
+
+    if (this.settings.pausedUntil != null && now >= this.settings.pausedUntil) {
+      this.settings.pausedUntil = null;
+      changed = true;
+    }
+    const muted = scheduler.isMuted(now, this.settings);
+    if (muted !== this.muted) {
+      this.muted = muted;
+      changed = true;
+    }
+
     const before = this.runtime;
     const repaired = scheduler.reconcile(this.reminders, before, now, { ...this.clock, zone });
-    const { states, fire } = scheduler.tick(this.reminders, repaired, now);
+    const { states, fire } = scheduler.tick(this.reminders, repaired, now, muted);
     this.clock = { lastNow: now, lastZone: zone };
 
     if (JSON.stringify(states) !== JSON.stringify(before)) {
       this.store.data.runtime = states;
+      changed = true;
+    }
+    if (changed) {
       this.store.save();
       this.emit('change');
     }
@@ -64,6 +85,7 @@ class Engine extends EventEmitter {
       .filter((r) => r.enabled)
       .map((r) => this.runtime[r.id]?.nextAt)
       .filter((t) => t != null);
+    if (this.settings.pausedUntil != null) times.push(this.settings.pausedUntil);
     const next = times.length ? Math.min(...times) : Infinity;
     this.timer = setTimeout(() => this.run(), Math.min(MAX_SLEEP, Math.max(250, next - now)));
   }
@@ -71,23 +93,33 @@ class Engine extends EventEmitter {
   answer(id, action) {
     const r = this.reminders.find((x) => x.id === id);
     const st = this.runtime[id];
-    if (!r || !st) return;
+    if (!r || !st || st.status !== 'due') return;
     const now = Date.now();
     this.runtime[id] = action === 'done' ? scheduler.done(r, st, now) : scheduler.wait(st, now, action);
-    this.store.save();
-    this.emit('change');
-    this.run();
+    this.commit();
   }
 
   changed(prev, next) {
     this.runtime[next.id] = scheduler.afterChange(prev, next, this.runtime[next.id], Date.now());
-    this.store.save();
-    this.emit('change');
-    this.run();
+    this.commit();
   }
 
   removed(id) {
     delete this.runtime[id];
+    this.commit();
+  }
+
+  restored(reminder, state) {
+    this.runtime[reminder.id] = state && state.status !== 'due' ? state : scheduler.initialState(reminder, Date.now());
+    this.commit();
+  }
+
+  pause(kind) {
+    this.settings.pausedUntil = scheduler.pauseEnd(kind, Date.now());
+    this.commit();
+  }
+
+  commit() {
     this.store.save();
     this.emit('change');
     this.run();
@@ -100,6 +132,17 @@ class Engine extends EventEmitter {
       if (at != null && (!best || at < best.at)) best = { reminder: r, at };
     }
     return best;
+  }
+
+  // Everything still to come before midnight, for the timeline.
+  today(now = Date.now()) {
+    const d = new Date(now);
+    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
+    const out = [];
+    for (const r of this.reminders) {
+      for (const at of scheduler.occurrences(r, this.runtime[r.id], now, Math.min(end, now + DAY))) out.push({ id: r.id, at });
+    }
+    return out.sort((a, b) => a.at - b.at);
   }
 }
 

@@ -15,8 +15,9 @@ function strike(buf, at, freq, partials, gain = 1) {
     const w = 2 * Math.PI * freq * ratio;
     for (let i = 0; start + i < buf.length; i++) {
       const t = i / RATE;
-      const env = Math.exp(-t / decay) * Math.min(1, t / 0.002);
-      if (env < 1e-4) break;
+      const decayed = Math.exp(-t / decay);
+      if (decayed < 1e-4) break;
+      const env = decayed * Math.min(1, t / 0.002);
       buf[start + i] += gain * amp * env * Math.sin(w * t);
     }
   }

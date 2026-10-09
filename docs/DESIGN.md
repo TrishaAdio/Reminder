@@ -1,15 +1,11 @@
-# RemindAni design brief
+# RemindAni design brief (v2)
 
-1. **Feel.** *Calm*: urgency comes from placement and sound, never from red, shaking, badges or exclamation marks. *Precise*: every size, gap, radius and curve is a token; no "close enough" values. *Warm*: warm neutrals and one amber accent; no cold tech-blue, no glass, no gradients.
-2. **Type.** Inter Variable (OFL, bundled, optical sizing on). Segoe UI only as fallback. Weights 400/500/600, sentence case everywhere, tabular figures for times.
-   Display 24/30 600 −0.019em (popup title only) · Title 20/26 600 −0.017em · Lead 15/21 400 −0.009em (popup body) · Body 14/20 400–500 −0.006em · Callout 13/18 400–600 −0.003em · Caption 12/16 500 0.
-3. **Color.** Neutral surfaces + amber. Amber reads as warmth and "now"; red would read as error, blue as information. It follows the Windows app mode.
-   Light: bg #F7F6F4, sidebar #EEECE8, surface #FFFFFF, text #1C1B19 / #64615B, accent #A84F0A (5.3:1 with white).
-   Dark: bg #1B1A19, sidebar #151413, surface #262523, text #F4F3F0 / #A9A59E, accent #F0A040 (8.3:1 with #231505).
-4. **Space.** 4px grid: 4 8 12 16 20 24 32 40. Concentric radii (outer = inner + inset): popup card 24 = buttons 12 + 12 inset; group 12 = segmented 8 + 4 inset; segmented 8 = thumb 6 + 2 inset. Reminder icons are circles, so they never fight a corner.
-   Shadow, popup only: 0 1 2 α.06 · 0 6 16 α.08 · 0 18 44 α.14 (dark ×≈3). Small knobs/thumbs: 0 1 2 α.12 · 0 2 6 α.06. A shadowed thing never has a border.
-   Windows 10 has no system blur, so surfaces are opaque tonal layers. No fake vibrancy. If transparency or GPU compositing is off, the popup becomes a square, solid, unshadowed card with a hairline.
-5. **Motion.** Springs only, solved in JS and emitted as CSS `linear()` easing for WAAPI and transitions.
-   Enter k260 c24 (ζ .74, 3% overshoot, within 1% at 408ms) · Exit k700 c52 (ζ .98, 243ms = 60% of enter) · Press k3000 c110 (ζ 1) · Release k520 c26 (ζ .57) · Layout k320 c30 · Toggle k600 c34. Mass 1.
-   Popup in: y −14→0, scale .96→1, fade in, text blur 6→0 in the first 160ms. Done: a check wipes in, then the card dissolves. Wait: the card shrinks and travels toward the tray. A queued reminder swaps content in place while the card stays.
-   Transform and opacity only, one motion per event. Reduced motion means 150ms cross-fades and no travel.
+1. **Feel.** *Calm*: urgency comes from placement, dimming and sound, never from red, shaking or exclamation marks. *Precise*: every size, gap, radius and curve is a token. *Warm*: warm neutrals, one amber accent for actions, muted tints for identity. No glass, no gradients.
+2. **Hierarchy.** Each screen has one large element: Today's countdown (40px) inside a live ring, the editor's 28px title, the popup's 28px message. Everything else stays at 15/13.
+3. **Type.** Inter Variable, bundled. Six sizes: 40 / 28 / 22 / 15 / 13 / 11, weights 400/500/600, sentence case, tabular figures for times. Segoe UI only as fallback.
+4. **Color.** Neutral layers window → card → raised, each a tonal step, lit by a 1px top highlight in dark mode. Amber (#A84F0A light, #F0A040 dark) is used only for actions and selection. Six preset tints share one oklch lightness and chroma and differ only in hue: indigo 278, blue 240, green 155, orange 52, rose 12, sand 82. Tints mark identity (tiles, ring, timeline), never actions. All text pairs are 4.5:1 or better (checked).
+5. **Space and shape.** 4px grid. Concentric radii: popup 32 = buttons 16 + 16 inset = tile 12 + 20 inset; list card 20 = rows 16 + 4 inset; control 10 = thumb 8 + 2 inset. One shadow recipe in two strengths (resting and lifted); the lifted one is pre-rendered and only fades.
+6. **Motion.** Springs only, solved in JS and emitted as CSS `linear()`. Enter k260 c24 (ζ .74, within 1% at 408ms) · Exit k700 c52 (243ms) · Press k3000 c110 · Release k520 c26 · Layout k320 c30 · Toggle k600 c34.
+   Tabs cross-fade, pushed pages slide 32px, and the tab thumb, segmented thumbs, toggles and position preview glide. Rows reorder and leave with FLIP. The toggle knob stretches while pressed, buttons squash to 0.97, and the check wipes in on Done. The popup drops 16px and scales up from 0.96 over a fading dim; Wait shrinks it toward the tray, Done settles it in place.
+   Transform and opacity only. One exception, done once: the ring's arc length (paint on a 136px SVG). Reduced motion swaps movement for 150ms cross-fades and stops idle loops.
+7. **Fallbacks.** Without transparency or GPU compositing, the popup becomes a square, solid card with a hairline, at the chosen position, with no dim.

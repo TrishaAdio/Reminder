@@ -1,14 +1,16 @@
 /* Buttons */
 
 .button {
-  height: 32px;
+  height: 34px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--s2);
-  padding: 0 var(--s3);
+  padding: 0 14px;
   border-radius: var(--r-control);
   background: var(--fill);
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -29,8 +31,21 @@
   opacity: 0.45;
 }
 
+.button.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.button.primary:hover {
+  background: var(--accent-hover);
+}
+
+.button.primary:active {
+  background: var(--accent-press);
+}
+
 .button.small {
-  height: 28px;
+  height: 30px;
   padding: 0 var(--s3);
 }
 
@@ -44,21 +59,57 @@
   color: var(--text);
 }
 
-.button.confirm,
-.button.confirm:hover {
-  background: var(--accent);
-  color: var(--on-accent);
+.icon-button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-thumb);
+  color: var(--text-2);
 }
 
-/* Toggle: the "on" colour is a layer that fades, the knob springs. */
+.icon-button .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.icon-button:hover {
+  background: var(--fill-hover);
+  color: var(--text);
+}
+
+.icon-button:active {
+  background: var(--fill-press);
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  margin: var(--s4) 0 0 -10px;
+  padding: 0 10px 0 4px;
+  border-radius: var(--r-thumb);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.back:hover {
+  background: var(--fill);
+  color: var(--text);
+}
+
+/* Toggle: the colour layer fades, the knob springs, and stretches while pressed. */
 
 .toggle {
   position: relative;
+  z-index: 1;
   flex: none;
-  width: 40px;
+  width: 42px;
   height: 24px;
   border-radius: 12px;
-  background: var(--track-off);
+  background: var(--track);
 }
 
 .toggle-on {
@@ -76,9 +127,10 @@
   left: 2px;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
+  border-radius: 10px;
   background: var(--knob);
   box-shadow: var(--shadow-knob);
+  transform-origin: left center;
   transition: transform var(--toggle-duration) var(--toggle-easing);
 }
 
@@ -87,29 +139,25 @@
 }
 
 .toggle[aria-checked='true'] .toggle-knob {
-  transform: translateX(16px);
+  transform: translateX(18px);
+  transform-origin: right center;
 }
 
 .toggle:active .toggle-knob {
-  transform: scale(0.92);
+  transform: scaleX(1.25);
 }
 
 .toggle[aria-checked='true']:active .toggle-knob {
-  transform: translateX(16px) scale(0.92);
+  transform: translateX(18px) scaleX(1.25);
 }
 
-
-/* Segmented control: group 12 → 4 inset → 8 → 2 inset → thumb 6. */
-
-.seg-row {
-  padding: var(--s1);
-}
+/* Segmented control: card 20 → field inset 6 → control 10 → 2 inset → thumb 8. */
 
 .segmented {
   position: relative;
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(var(--count), 1fr);
+  grid-template-columns: repeat(var(--count), minmax(0, 1fr));
   padding: 2px;
   border-radius: var(--r-control);
   background: var(--fill);
@@ -122,23 +170,22 @@
   left: 2px;
   width: calc((100% - 4px) / var(--count));
   border-radius: var(--r-thumb);
-  background: var(--knob);
+  background: var(--thumb);
   box-shadow: var(--shadow-knob);
   transition: transform var(--layout-duration) var(--layout-easing);
 }
 
-@media (prefers-color-scheme: dark) {
-  .seg-thumb {
-    background: #3d3b38;
-  }
-}
-
 .seg-option {
   position: relative;
-  height: 32px;
+  height: 30px;
+  padding: 0 var(--s2);
   border-radius: var(--r-thumb);
-  color: var(--text-2);
+  font-size: 13px;
   font-weight: 500;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .seg-option:hover,
@@ -164,9 +211,9 @@
 .stepper-button {
   width: 28px;
   height: 28px;
-  border-radius: var(--r-thumb);
   display: grid;
   place-items: center;
+  border-radius: var(--r-thumb);
   color: var(--text-2);
 }
 
@@ -180,18 +227,15 @@
   color: var(--text);
 }
 
-.stepper-button:active:not(:disabled) {
-  background: var(--fill-press);
-}
-
 .stepper-button:disabled {
   opacity: 0.35;
 }
 
 .stepper-value {
-  min-width: 84px;
+  min-width: 88px;
   text-align: center;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .stepper-value:focus-visible {
@@ -226,7 +270,8 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
   opacity: 0;
   transform: scale(0.6);
   transition: opacity var(--toggle-duration) var(--toggle-easing), transform var(--toggle-duration) var(--toggle-easing);
@@ -237,7 +282,7 @@
 }
 
 .day[aria-pressed='true'] {
-  color: var(--on-accent);
+  color: var(--accent);
 }
 
 .day[aria-pressed='true'] .day-fill {
@@ -254,17 +299,17 @@
   padding: 0 6px;
   border-radius: var(--r-control);
   background: var(--fill);
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .time-field[aria-invalid='true'] {
-  background: var(--accent-tint);
+  background: var(--accent-soft);
 }
 
 .time-seg {
   padding: 2px 3px;
-  border-radius: 4px;
-  text-align: center;
+  border-radius: 5px;
 }
 
 .time-seg:hover {
@@ -300,14 +345,14 @@
 .slider::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 2px;
-  background: linear-gradient(to right, var(--accent) var(--level), var(--track-off) var(--level));
+  background: linear-gradient(to right, var(--accent) var(--level), var(--track) var(--level));
 }
 
 .slider::-webkit-slider-thumb {
   appearance: none;
-  width: 20px;
-  height: 20px;
-  margin-top: -8px;
+  width: 22px;
+  height: 22px;
+  margin-top: -9px;
   border-radius: 50%;
   background: var(--knob);
   box-shadow: var(--shadow-knob);
@@ -315,7 +360,7 @@
 }
 
 .slider:active::-webkit-slider-thumb {
-  transform: scale(1.1);
+  transform: scale(1.12);
   transition-duration: var(--press-duration);
   transition-timing-function: var(--press-easing);
 }

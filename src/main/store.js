@@ -4,13 +4,16 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
-const { AUDIO_EXT } = require('./reminders');
+const { AUDIO_EXT, upgrade } = require('./reminders');
 
-const DEFAULTS = {
-  version: 1,
-  settings: { defaultWait: 2, volume: 0.8 },
-  reminders: [],
-  runtime: {},
+const DEFAULT_SETTINGS = {
+  defaultWait: 2,
+  volume: 0.8,
+  theme: 'system',
+  position: 'top',
+  dim: true,
+  quiet: { enabled: false, from: '22:00', to: '07:00' },
+  pausedUntil: null,
 };
 
 class Store {
@@ -18,7 +21,7 @@ class Store {
     this.dir = dir;
     this.file = path.join(dir, 'reminders.json');
     this.soundsDir = path.join(dir, 'sounds');
-    this.data = structuredClone(DEFAULTS);
+    this.data = { version: 2, settings: structuredClone(DEFAULT_SETTINGS), reminders: [], runtime: {} };
     this.timer = null;
   }
 
@@ -26,10 +29,13 @@ class Store {
     await fsp.mkdir(this.soundsDir, { recursive: true });
     try {
       const parsed = JSON.parse(await fsp.readFile(this.file, 'utf8'));
+      const settings = { ...DEFAULT_SETTINGS, ...parsed.settings };
+      settings.quiet = { ...DEFAULT_SETTINGS.quiet, ...parsed.settings?.quiet };
       this.data = {
-        ...structuredClone(DEFAULTS),
-        ...parsed,
-        settings: { ...DEFAULTS.settings, ...parsed.settings },
+        version: 2,
+        settings,
+        reminders: (parsed.reminders ?? []).map(upgrade),
+        runtime: parsed.runtime ?? {},
       };
     } catch (err) {
       // Keep an unreadable file for inspection instead of silently overwriting it.
@@ -44,13 +50,14 @@ class Store {
 
   flush() {
     clearTimeout(this.timer);
+    const json = JSON.stringify(this.data, null, 2);
     const tmp = `${this.file}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(this.data, null, 2));
+    fs.writeFileSync(tmp, json);
     try {
       fs.renameSync(tmp, this.file);
     } catch {
       // Antivirus or indexers on Windows can briefly lock the target; fall back to a direct write.
-      fs.writeFileSync(this.file, JSON.stringify(this.data, null, 2));
+      fs.writeFileSync(this.file, json);
       fs.rmSync(tmp, { force: true });
     }
   }
@@ -67,6 +74,7 @@ class Store {
     return { kind: 'file', file, name: path.basename(source) };
   }
 
+  // Runs at startup only, so a deleted reminder's sound survives until its undo window is long gone.
   async pruneSounds() {
     const used = new Set(this.data.reminders.filter((r) => r.sound.kind === 'file').map((r) => r.sound.file));
     for (const file of await fsp.readdir(this.soundsDir)) {
