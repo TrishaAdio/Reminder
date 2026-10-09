@@ -15,5 +15,5 @@ if (process.platform !== 'win32') console.warn('Not on Windows: building the NSI
 
 run('npm test');
 run(`npm version ${bump} -m "Release v%s"`);
-run('npx electron-builder --win nsis --x64 --publish always');
+run('npm run publish');
 run('git push --follow-tags');

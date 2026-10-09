@@ -12,6 +12,9 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
 
@@ -22,7 +25,6 @@ jobs:
 
       - name: Skip if npm run release already published this tag
         id: existing
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -39,10 +41,20 @@ jobs:
 
       # The tag is the version: v1.2.0 builds 1.2.0 even if package.json was not bumped.
       - if: steps.existing.outputs.done != 'true'
-        shell: bash
         run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
 
       - if: steps.existing.outputs.done != 'true'
-        run: npx electron-builder --win nsis --x64 --publish always
+        run: npm run publish
         env:
           GH_TOKEN: ${{ github.token }}
+
+      # electron-builder can exit 0 without uploading; fail loudly if the updater files are missing.
+      - name: Check the release has everything updates need
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          assets=$(gh release view "$GITHUB_REF_NAME" --json assets -q '.assets[].name')
+          echo "$assets"
+          for f in latest.yml "RemindAni-Setup-${GITHUB_REF_NAME#v}.exe" "RemindAni-Setup-${GITHUB_REF_NAME#v}.exe.blockmap"; do
+            grep -qxF "$f" <<< "$assets" || { echo "::error::$f is missing from the release"; exit 1; }
+          done
