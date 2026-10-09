@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       install:
-        description: Releases to install first, in order (space separated tags)
+        description: Releases to install first, in order (space separated tags, or "source" for a build of this commit)
         required: true
         default: v1.1.0
       scenario:
@@ -33,7 +33,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           foreach ($tag in "${{ inputs.install }}".Split(' ', [StringSplitOptions]::RemoveEmptyEntries)) {
-            gh release download $tag --pattern "RemindAni-Setup-*.exe" --dir "old\$tag"
+            if ($tag -eq 'source') {
+              npm ci | Out-Null
+              npm run dist | Out-Null
+              New-Item -ItemType Directory "old\$tag" -Force | Out-Null
+              Copy-Item dist\RemindAni-Setup-*.exe "old\$tag\"
+            } else {
+              gh release download $tag --pattern "RemindAni-Setup-*.exe" --dir "old\$tag"
+            }
             $setup = Get-ChildItem "old\$tag\*.exe" | Select-Object -First 1
             $installArgs = if ('${{ inputs.scenario }}' -eq 'allusers') { '/S /allusers' } else { '/S' }
             Start-Process $setup.FullName -ArgumentList $installArgs -Wait
