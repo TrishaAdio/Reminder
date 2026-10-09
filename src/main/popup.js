@@ -31,7 +31,7 @@ class Popup extends EventEmitter {
     const { companions, companionOn } = this.store.data.settings;
     if (!companionOn || !companions.length || this.solid) return null;
     const c = companions[this.companionTurn++ % companions.length];
-    return `app://ui/companion/${encodeURIComponent(c.file)}`;
+    return `app://ui/companion/${c.builtin ? 'builtin' : 'user'}/${encodeURIComponent(c.file)}`;
   }
 
   init() {

@@ -6,6 +6,7 @@ const { protocol, net } = require('electron');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
 const BUILTIN_SOUNDS = path.join(__dirname, '..', '..', 'assets', 'sounds');
+const BUILTIN_COMPANIONS = path.join(__dirname, '..', '..', 'assets', 'companions');
 
 // A privileged custom scheme gives the renderers a real origin, so the CSP can stay at 'self'.
 function registerScheme() {
@@ -21,7 +22,8 @@ function resolve(url, dirs) {
   const rel = decodeURIComponent(pathname);
   if (rel.startsWith('/sound/builtin/')) return inside(BUILTIN_SOUNDS, rel.slice(15));
   if (rel.startsWith('/sound/user/')) return inside(dirs.sounds, rel.slice(12));
-  if (rel.startsWith('/companion/')) return inside(dirs.companions, rel.slice(11));
+  if (rel.startsWith('/companion/builtin/')) return inside(BUILTIN_COMPANIONS, rel.slice(19));
+  if (rel.startsWith('/companion/user/')) return inside(dirs.companions, rel.slice(16));
   return inside(RENDERER, rel);
 }
 

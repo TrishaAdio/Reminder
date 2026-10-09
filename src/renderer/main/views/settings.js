@@ -73,13 +73,14 @@ export function settingsView({ api, state, fmt, player, actions }) {
   const companionToggle = toggle({ checked: s.settings.companionOn, label: 'Pictures on the card', onChange: (on) => api.setSetting('companionOn', on) });
   const strip = h('div', { class: 'buddies', role: 'list', 'aria-label': 'Pictures' });
   const addPictures = h('button', { class: 'button small pressable', type: 'button', onclick: () => addCompanions() }, h('span', { html: icon('plus') }), 'Add pictures…');
+  const restorePictures = h('button', { class: 'button small quiet pressable', type: 'button', onclick: () => api.restoreCompanions() }, 'Bring back the built-in pictures');
   const companionNote = h('p', { class: 'field-sub t-small buddy-note', role: 'status' });
   const companionRow = h(
     'div',
     { class: 'field buddy-field', 'data-key': 'buddies' },
     h('div', { class: 'buddy-head' }, h('span', { class: 'field-label grow stack' }, 'Pictures on the card', h('span', { class: 'field-sub t-small' }, 'They peek over the top of each card, taking turns.')), companionToggle.el),
     strip,
-    h('div', { class: 'buddy-foot' }, addPictures, companionNote),
+    h('div', { class: 'buddy-foot' }, addPictures, restorePictures, companionNote),
   );
   let shownBuddies = null;
 
@@ -98,7 +99,7 @@ export function settingsView({ api, state, fmt, player, actions }) {
           h(
             'div',
             { class: 'buddy-thumb', role: 'listitem' },
-            h('img', { src: `../companion/${encodeURIComponent(c.file)}`, alt: c.name, draggable: 'false' }),
+            h('img', { src: `../companion/${c.builtin ? 'builtin' : 'user'}/${encodeURIComponent(c.file)}`, alt: c.name, draggable: 'false' }),
             h('button', { class: 'buddy-remove pressable', type: 'button', 'aria-label': `Remove ${c.name}`, title: 'Remove', html: icon('close'), onclick: () => api.removeCompanion(c.file) }),
           ),
         ),
@@ -107,6 +108,7 @@ export function settingsView({ api, state, fmt, player, actions }) {
     strip.hidden = !list.length;
     companionToggle.set(s.settings.companionOn);
     addPictures.disabled = list.length >= 24;
+    restorePictures.hidden = list.filter((c) => c.builtin).length >= 6;
     if (!list.length && !companionNote.textContent) setText(companionNote, 'Transparent PNGs look best.');
     else if (list.length && companionNote.textContent === 'Transparent PNGs look best.') setText(companionNote, '');
   }

@@ -162,6 +162,12 @@ function registerIpc({ store, engine, popup, updates, env, mainWindow }) {
     return { added, failed };
   });
 
+  handle('companion:restore', () => {
+    const added = store.restoreBuiltinCompanions();
+    engine.commit();
+    return added;
+  });
+
   handle('companion:remove', async (file) => {
     await store.removeCompanion(String(file));
     engine.commit();

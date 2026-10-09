@@ -6,6 +6,19 @@ const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { AUDIO_EXT, upgrade } = require('./reminders');
 
+const IMAGE_EXT = new Set(['.png', '.webp', '.gif', '.jpg', '.jpeg']);
+
+// Bundled in assets/companions; shown until someone removes them.
+const BUILTIN_COMPANIONS = [
+  { file: 'yor-red-sweater.webp', name: 'Yor in a red sweater' },
+  { file: 'rize.webp', name: 'Rize' },
+  { file: 'yor-smile.webp', name: 'Yor smiling' },
+  { file: 'yor-sun-hat.webp', name: 'Yor in a sun hat' },
+  { file: 'yor-cat.webp', name: 'Yor holding a cat' },
+  { file: 'yor-cat-shop.webp', name: 'Yor with a cat' },
+].map((c) => ({ ...c, builtin: true }));
+const MAX_COMPANIONS = 24;
+
 const DEFAULT_SETTINGS = {
   defaultWait: 2,
   volume: 0.8,
@@ -15,11 +28,9 @@ const DEFAULT_SETTINGS = {
   quiet: { enabled: false, from: '22:00', to: '07:00' },
   pausedUntil: null,
   companionOn: true,
-  companions: [],
+  companions: BUILTIN_COMPANIONS,
+  builtinCompanions: 1,
 };
-
-const IMAGE_EXT = new Set(['.png', '.webp', '.gif', '.jpg', '.jpeg']);
-const MAX_COMPANIONS = 24;
 
 class Store {
   constructor(dir) {
@@ -38,6 +49,12 @@ class Store {
       const parsed = JSON.parse(await fsp.readFile(this.file, 'utf8'));
       const settings = { ...DEFAULT_SETTINGS, ...parsed.settings };
       settings.quiet = { ...DEFAULT_SETTINGS.quiet, ...parsed.settings?.quiet };
+      // 1.2.0 saved an empty list; give those users the built-in pictures once.
+      if (!parsed.settings?.builtinCompanions) {
+        settings.companions = [...BUILTIN_COMPANIONS, ...(parsed.settings?.companions ?? [])];
+        settings.builtinCompanions = 1;
+      }
+      settings.companions = structuredClone(settings.companions);
       this.data = {
         version: 2,
         settings,
@@ -96,8 +113,16 @@ class Store {
     const list = this.data.settings.companions;
     const i = list.findIndex((c) => c.file === file);
     if (i < 0) return;
-    list.splice(i, 1);
-    await fsp.rm(path.join(this.companionsDir, file), { force: true });
+    const [removed] = list.splice(i, 1);
+    // Built-in pictures ship with the app, so only the list entry goes.
+    if (!removed.builtin) await fsp.rm(path.join(this.companionsDir, file), { force: true });
+  }
+
+  restoreBuiltinCompanions() {
+    const list = this.data.settings.companions;
+    const missing = BUILTIN_COMPANIONS.filter((b) => !list.some((c) => c.builtin && c.file === b.file));
+    list.unshift(...missing);
+    return missing.length;
   }
 
   // Runs at startup only, so a deleted reminder's sound survives until its undo window is long gone.
