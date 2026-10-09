@@ -1,6 +1,8 @@
 # Audit and verification
 
-Each control was clicked through Playwright against the running Electron app on Linux (Xvfb). The tray menu was driven through its real `MenuItem.click()`, and the clock was shifted inside the main process to simulate sleep, waits and clock changes. Nothing here was run on real Windows.
+Each control was clicked through Playwright against the running Electron app on Linux (Xvfb). The tray menu was driven through its real `MenuItem.click()`, and the clock was shifted inside the main process to simulate sleep, waits and clock changes. The app itself has not been run on a real Windows PC.
+
+Release pipeline (real, not simulated): pushing tag `v1.1.0` built the installer on `windows-latest`, ran the 42 unit tests, and published `RemindAni-Setup-1.1.0.exe`, `latest.yml` and the `.blockmap` to one GitHub Release. The real electron-updater client, reporting version 1.0.0 as win32, then found 1.1.0 there, downloaded it and verified its sha512. Installing a downloaded update was not tested.
 
 ## v1.0 (before)
 Controls v1 had mostly worked. **14 required features did not exist**: per-row toggle, icon picker, duplicate, undo delete, per-reminder wait, play/stop preview, popup dimming and idle motion, popup position, theme, quiet hours, pause (tray and app), updates, Today timeline and countdown. "Show now" was a preview, so Wait/Done on it did nothing. A defect was also found later: **three of the six built-in sounds (Glass, Marimba, Chime) were silent WAV files**. `test/sounds.test.js` now guards against that.
