@@ -1,6 +1,8 @@
 'use strict';
 
 // GitHub owner and repo for updates live in package.json under "updates": change them there only.
+// Keep the .cjs extension: on Windows, a file named electron-builder.js next to package.json is
+// run by Windows Script Host instead of the real electron-builder command.
 const { updates } = require('./package.json');
 
 module.exports = {
