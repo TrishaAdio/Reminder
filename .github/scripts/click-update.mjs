@@ -16,7 +16,12 @@ for (let i = 0; i < 30 && !browser; i++) {
   await sleep(1000);
   browser = await chromium.connectOverCDP('http://127.0.0.1:9222').catch(() => null);
 }
-const main = browser.contexts().flatMap((c) => c.pages()).find((p) => p.url().includes('/main/'));
+let main;
+for (let i = 0; i < 30 && !main; i++) {
+  main = browser.contexts().flatMap((c) => c.pages()).find((p) => p.url().includes('/main/'));
+  if (!main) await sleep(1000);
+}
+await main.waitForSelector('#tab-settings');
 const text = (sel) => main.textContent(sel).catch(() => null);
 console.log('opened', main.url());
 
