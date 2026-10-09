@@ -497,15 +497,6 @@ body {
   letter-spacing: -0.02em;
 }
 
-/* Colour emoji come from the system font; Inter has none. */
-.praise-emoji {
-  display: inline-block;
-  margin-left: 2px;
-  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
-  font-weight: 400;
-  transform-origin: 50% 70%;
-}
-
 .praise-sub {
   font-size: 14px;
   line-height: 18px;

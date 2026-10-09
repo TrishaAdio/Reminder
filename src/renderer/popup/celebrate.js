@@ -577,44 +577,44 @@ function nextEffect(data) {
   return name;
 }
 
-// Cute words for the badge: [line, emoji]. Emoji are kept to ones Windows 10 can draw.
+// Cute words for the badge.
 const CUTE = [
-  ['Yay, you did it!', '🎉'],
-  ['Look at you go!', '✨'],
-  ['So proud of you!', '💖'],
-  ['Little win, big smile!', '🌷'],
-  ['Gold star for you!', '🌟'],
-  ['Aww, well done!', '🧸'],
-  ['You’re doing amazing!', '💕'],
-  ['Cutie did it!', '🌸'],
-  ['High five!', '🙌'],
-  ['Happy you, happy day!', '🌈'],
+  'Yay, you did it!',
+  'Look at you go!',
+  'So proud of you!',
+  'Little win, big smile!',
+  'Gold star for you!',
+  'Aww, well done!',
+  'You’re doing amazing!',
+  'Cutie did it!',
+  'High five!',
+  'Happy you, happy day!',
 ];
 
 // Lines that match the reminder, by its icon.
 const FOR_REMINDER = {
-  drop: [['Hydrated & adorable!', '💧'], ['Sip sip hooray!', '💧'], ['Water you doing? Winning!', '💦']],
-  eye: [['Happy eyes!', '✨'], ['Your eyes say thank you!', '💚'], ['Eyes rested, cutie!', '👀']],
-  moon: [['Sweet dreams soon!', '🌙'], ['Cozy mode: on!', '🧸'], ['Sleepy time, superstar!', '💤']],
-  pill: [['Healthy & happy!', '💊'], ['Taking care of you!', '💖'], ['Good job, healthy bean!', '🌱']],
-  stretch: [['Stretchy & strong!', '🤸'], ['Wiggle wiggle, done!', '💃'], ['Feeling bendy!', '🌿']],
-  cup: [['Cup of yay!', '☕'], ['Tea-rrific!', '🍵']],
-  book: [['Smarty pants!', '📚'], ['Big brain energy!', '🧠']],
-  sun: [['You’re sunshine!', '☀️'], ['Bright and done!', '🌻']],
+  drop: ['Hydrated & adorable!', 'Sip sip hooray!', 'Water you doing? Winning!'],
+  eye: ['Happy eyes!', 'Your eyes say thank you!', 'Eyes rested, cutie!'],
+  moon: ['Sweet dreams soon!', 'Cozy mode: on!', 'Sleepy time, superstar!'],
+  pill: ['Healthy & happy!', 'Taking care of you!', 'Good job, healthy bean!'],
+  stretch: ['Stretchy & strong!', 'Wiggle wiggle, done!', 'Feeling bendy!'],
+  cup: ['Cup of yay!', 'Tea-rrific!'],
+  book: ['Smarty pants!', 'Big brain energy!'],
+  sun: ['You’re sunshine!', 'Bright and done!'],
 };
 
 // Lines that match the celebration on screen.
 const FOR_EFFECT = {
-  confetti: [['Party time!', '🎉'], ['Yippee!', '🎊']],
-  fireworks: [['You’re dazzling!', '🎆'], ['Sparkly work!', '✨']],
-  hearts: [['Love that for you!', '💖'], ['Heart eyes!', '😍']],
-  stars: [['Superstar!', '🌟'], ['Shine on, star!', '⭐']],
-  bubbles: [['Bubbly & done!', '💙'], ['Pop pop, hooray!', '🎈']],
-  petals: [['Blooming lovely!', '🌸'], ['Pretty as petals!', '🌷']],
+  confetti: ['Party time!', 'Yippee!'],
+  fireworks: ['You’re dazzling!', 'Sparkly work!'],
+  hearts: ['Love that for you!', 'Sending you hearts!'],
+  stars: ['Superstar!', 'Shine on, star!'],
+  bubbles: ['Bubbly & done!', 'Pop pop, hooray!'],
+  petals: ['Blooming lovely!', 'Pretty as petals!'],
 };
 
-const FIRST = [['First one, yay!', '🌱'], ['Great start, cutie!', '🌅'], ['And so it begins!', '🐣']];
-const STREAK = [['Combo ×{n}!', '✨'], ['On a cute streak!', '🔥'], ['Unstoppable cutie!', '💪'], ['{n} in a row, wow!', '🤩']];
+const FIRST = ['First one, yay!', 'Great start, cutie!', 'And so it begins!'];
+const STREAK = ['Combo ×{n}!', 'On a cute streak!', 'Unstoppable cutie!', '{n} in a row, wow!'];
 
 function praise(data, { streak, count, effect, icon }) {
   let list;
@@ -628,10 +628,10 @@ function praise(data, { streak, count, effect, icon }) {
     list = (roll < 0.5 && FOR_REMINDER[icon]) || (roll < 0.75 && FOR_EFFECT[effect]) || CUTE;
   }
   // Never the same line twice in a row.
-  let entry = pick(list);
-  if (entry[0] === data.word && list.length > 1) entry = list[(list.indexOf(entry) + 1) % list.length];
-  data.word = entry[0];
-  return { line: entry[0].replace('{n}', streak), emoji: entry[1], saysStreak: entry[0].includes('{n}') };
+  let line = pick(list);
+  if (line === data.word && list.length > 1) line = list[(list.indexOf(line) + 1) % list.length];
+  data.word = line;
+  return { line: line.replace('{n}', streak), saysStreak: line.includes('{n}') };
 }
 
 // ── Shared moment: card jump, shockwave, flash, praise badge ─────────────────────────────
@@ -664,11 +664,7 @@ function badge(card, { word, count, streak, check, leaving, calm }) {
   text.className = 'praise-text';
   const title = document.createElement('span');
   title.className = 'praise-title';
-  title.textContent = `${word.line} `;
-  const emoji = document.createElement('span');
-  emoji.className = 'praise-emoji';
-  emoji.textContent = word.emoji;
-  title.append(emoji);
+  title.textContent = word.line;
   text.append(title);
   if (count) {
     const sub = document.createElement('span');
@@ -696,20 +692,6 @@ function badge(card, { word, count, streak, check, leaving, calm }) {
   const done = settle(el.animate(frames, { duration: 1700, delay: calm ? 0 : 140, easing: 'linear', fill: 'both' }));
   if (!calm) {
     settle(mark.animate([{ transform: 'scale(0) rotate(-90deg)' }, { transform: 'scale(1.25) rotate(8deg)', offset: 0.6 }, { transform: 'none' }], { duration: 520, delay: 220, easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)', fill: 'both' }));
-    // The emoji pops in last and gives a happy little wiggle.
-    settle(
-      emoji.animate(
-        [
-          { transform: 'scale(0) rotate(-30deg)' },
-          { transform: 'scale(1.45) rotate(12deg)', offset: 0.32 },
-          { transform: 'scale(0.92) rotate(-10deg)', offset: 0.52 },
-          { transform: 'scale(1.08) rotate(6deg)', offset: 0.7 },
-          { transform: 'scale(1) rotate(-3deg)', offset: 0.85 },
-          { transform: 'none' },
-        ],
-        { duration: 820, delay: 340, easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)', fill: 'both' },
-      ),
-    );
   }
   return done.then(() => el.remove());
 }
