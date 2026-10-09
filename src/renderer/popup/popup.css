@@ -41,7 +41,7 @@ body {
 
 .card {
   position: relative;
-  width: 460px;
+  width: 560px;
   opacity: 0;
 }
 
@@ -50,7 +50,7 @@ body {
 .peek {
   position: absolute;
   inset: 0;
-  border-radius: 32px;
+  border-radius: 36px;
 }
 
 .shadow {
@@ -59,12 +59,13 @@ body {
 
 /* The companion stands behind the card, so the card's top edge hides its lower part and it
    looks like it is peeking over. It sits under the shadow layer, which gives it a soft contact
-   shadow where it meets the card. */
+   shadow where it meets the card. Only the bottom 28px is hidden: enough to cover a picture's
+   cropped lower edge while the face, shoulders and hands stay in view. */
 .buddy {
   position: absolute;
-  right: 40px;
-  bottom: calc(100% - 68px);
-  height: 212px;
+  right: 48px;
+  bottom: calc(100% - 28px);
+  height: 260px;
   pointer-events: none;
   transform-origin: 50% 100%;
 }
@@ -89,10 +90,10 @@ body {
   to { transform: translateY(-4px) rotate(-1.2deg); }
 }
 
-/* Make room above the card for the part that sticks out. */
+/* Make room above the card for the part that sticks out (260 - 28 = 232, plus the bob). */
 .has-buddy.pos-top .stage,
 .has-buddy.pos-top-right .stage {
-  padding-top: 186px;
+  padding-top: 264px;
 }
 
 /* Cards waiting in the queue peek out from under this one. */
@@ -111,35 +112,35 @@ body {
 
 .surface {
   position: relative;
-  border-radius: 32px;
+  border-radius: 36px;
   background: var(--popup);
   box-shadow: var(--highlight);
   overflow: hidden;
 }
 
-/* Card 32 → 20 inset → tile 12 (concentric). */
+/* Card 36 → 24 inset → tile 12 (concentric). */
 .content {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) 28px;
-  column-gap: var(--s4);
-  padding: var(--s5) var(--s4) var(--s4) var(--s5);
+  grid-template-columns: 64px minmax(0, 1fr) 32px;
+  column-gap: var(--s5);
+  padding: var(--s6) var(--s5) var(--s5) var(--s6);
 }
 
 .tile-wrap {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
 }
 
 .tile-wrap .tile {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   border-radius: 12px;
 }
 
 .tile-wrap .tile .icon {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
 }
 
 /* Idle motion: a soft ring leaves the tile every few seconds. */
@@ -166,6 +167,8 @@ body {
 }
 
 .eyebrow {
+  font-size: 14px;
+  line-height: 20px;
   font-weight: 600;
   color: var(--ink);
   white-space: nowrap;
@@ -183,11 +186,15 @@ body {
 
 .title {
   margin-top: 2px;
+  font-size: 32px;
+  line-height: 38px;
   -webkit-line-clamp: 2;
 }
 
 .note {
   margin-top: var(--s1);
+  font-size: 16px;
+  line-height: 22px;
   color: var(--text-2);
   -webkit-line-clamp: 3;
 }
@@ -199,8 +206,8 @@ body {
 }
 
 .close {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -224,21 +231,21 @@ body {
   color: var(--text);
 }
 
-/* Card 32 → 16 inset → buttons 16 (concentric). */
+/* Card 36 → 16 inset → buttons 20 (concentric). */
 .actions {
   display: grid;
   grid-template-columns: 1fr 1fr 1.35fr;
-  gap: var(--s2);
-  padding: var(--s1) var(--s4) var(--s4);
+  gap: var(--s3);
+  padding: var(--s2) var(--s4) var(--s4);
 }
 
 .action {
   --button-bg: var(--fill);
   position: relative;
-  height: 52px;
-  border-radius: 16px;
+  height: 60px;
+  border-radius: 20px;
   background: var(--button-bg);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
 }
 

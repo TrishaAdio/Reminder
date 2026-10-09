@@ -5,7 +5,7 @@ const { EventEmitter } = require('node:events');
 const { BrowserWindow, ipcMain, screen } = require('electron');
 
 // Solid fallback: no transparency, so the window is the card and sits at the chosen spot.
-const SOLID = { width: 460, height: 260, margin: 24 };
+const SOLID = { width: 560, height: 300, margin: 24 };
 
 function soundUrl(sound) {
   return sound.kind === 'file'
