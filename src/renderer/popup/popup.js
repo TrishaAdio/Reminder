@@ -1,6 +1,7 @@
 import { animate, spring, reducedMotion, FADE, installSpringProperties, pulse } from '../shared/spring.js';
 import { icon, tintClass } from '../shared/icons.js';
 import { measureFrames } from './frames.js';
+import { celebrate } from './celebrate.js';
 
 installSpringProperties();
 
@@ -100,6 +101,11 @@ async function confirmDone() {
     tickCover.style.transform = 'translateX(101%)';
     return wait(260);
   }
+  // A springy pop on the button itself. No fill, so it never pins a transform over :active.
+  doneButton.animate(
+    [{ transform: 'scale(0.97)' }, { transform: 'scale(1.06)', offset: 0.35 }, { transform: 'scale(0.99)', offset: 0.7 }, { transform: 'none' }],
+    { duration: 420, easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)' },
+  );
   animate(doneLabel, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(0.9)' }], 'exit');
   await animate(tickCover, [{ transform: 'translateX(0)' }, { transform: 'translateX(101%)' }], 'exit');
   await wait(80);
@@ -150,12 +156,26 @@ async function respond(action) {
   pulse(buttonFor(action));
   sound.stop();
   const reply = api.answer(current.id, action);
-  if (action === 'done') await confirmDone();
+  let party = null;
+  if (action === 'done') {
+    party = celebrate({
+      button: doneButton,
+      card,
+      buddy: buddy.hidden ? null : buddyImg,
+      calm: calm(),
+      volume: current.volume,
+      counts: !current.preview,
+      check: icon('check'),
+    });
+    await Promise.all([confirmDone(), party.reacted]);
+  }
   const next = await reply;
   if (next) {
     await swap(next, action);
   } else {
     await leave(action);
+    // The window hides once the last piece has landed, not mid-flight.
+    await party?.landed;
     finish();
   }
   busy = false;

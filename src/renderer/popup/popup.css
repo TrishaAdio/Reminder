@@ -319,6 +319,121 @@ body {
   border-radius: var(--r-control);
 }
 
+/* Done celebrations (celebrate.js). The layer covers the window above the card; pieces are
+   positioned by transform only, from the top-left corner. */
+:root {
+  --bit-l: 0.72;
+  --bit-c: 0.17;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bit-l: 0.8;
+    --bit-c: 0.15;
+  }
+}
+
+.burst {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.bit {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  background: var(--bit);
+  will-change: transform, opacity;
+}
+
+.bit.dot {
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+}
+
+.bit.strip {
+  width: 7px;
+  height: 15px;
+  margin: -7.5px 0 0 -3.5px;
+  border-radius: 2px;
+}
+
+.bit.spark {
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+}
+
+.bit.star {
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+.bit.heart {
+  width: 18px;
+  height: 16px;
+  margin: -8px 0 0 -9px;
+  clip-path: path('M9 15.5C9 15.5 .5 10 .5 4.8C.5 2.2 2.6.5 4.9.5C6.7.5 8.2 1.6 9 3.1C9.8 1.6 11.3.5 13.1.5C15.4.5 17.5 2.2 17.5 4.8C17.5 10 9 15.5 9 15.5Z');
+}
+
+.bit.bubble {
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.75) 0 2.5px, transparent 3.5px);
+  box-shadow: inset 0 0 0 2px var(--bit);
+}
+
+.bit.petal {
+  width: 14px;
+  height: 19px;
+  margin: -9.5px 0 0 -7px;
+  border-radius: 0 100% 0 100%;
+}
+
+.done-ring {
+  position: absolute;
+  border-radius: 20px;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.tally {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: -32px;
+  padding: 6px 12px 6px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  transform: translateX(-50%);
+}
+
+.tally .icon {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.5;
+}
+
+.solid .done-ring {
+  border-radius: var(--r-control);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .showing .pulse,
   .showing .buddy-img {
