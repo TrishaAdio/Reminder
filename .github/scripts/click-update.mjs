@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { chromium } from 'playwright-core';
 
-const exe = `${process.env.LOCALAPPDATA}\\Programs\\RemindAni\\RemindAni.exe`;
+const exe = process.env.REMINDANI_EXE;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const app = spawn(exe, ['--remote-debugging-port=9222'], { stdio: ['ignore', 'pipe', 'pipe'] });
 app.stdout.on('data', (d) => process.stdout.write(`[app] ${d}`));
@@ -39,4 +39,10 @@ await main.click('.update button:has-text("Restart and update")');
 console.log('clicked Restart and update');
 const exited = await Promise.race([new Promise((r) => app.once('exit', () => r(true))), sleep(30000).then(() => false)]);
 console.log(exited ? 'old app quit' : 'old app did NOT quit within 30 s');
+if (process.env.SCENARIO === 'reopen') {
+  // Someone sees the app vanish and double-clicks it again while the update installs.
+  await sleep(3000);
+  spawn(exe, [], { detached: true, stdio: 'ignore' }).unref();
+  console.log('reopened the app 3 s after it quit');
+}
 process.exit(0);

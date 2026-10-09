@@ -10,6 +10,10 @@ on:
         description: Releases to install first, in order (space separated tags)
         required: true
         default: v1.1.0
+      scenario:
+        description: normal | allusers (installed for everyone) | reopen (user opens the app again mid-install)
+        required: true
+        default: normal
 
 jobs:
   update:
@@ -31,15 +35,20 @@ jobs:
           foreach ($tag in "${{ inputs.install }}".Split(' ', [StringSplitOptions]::RemoveEmptyEntries)) {
             gh release download $tag --pattern "RemindAni-Setup-*.exe" --dir "old\$tag"
             $setup = Get-ChildItem "old\$tag\*.exe" | Select-Object -First 1
-            Start-Process $setup.FullName -ArgumentList '/S' -Wait
+            $installArgs = if ('${{ inputs.scenario }}' -eq 'allusers') { '/S /allusers' } else { '/S' }
+            Start-Process $setup.FullName -ArgumentList $installArgs -Wait
             Get-Process RemindAni -ErrorAction SilentlyContinue | Stop-Process -Force
             Start-Sleep 2
-            "Installed $tag -> $((Get-Item "$env:LOCALAPPDATA\Programs\RemindAni\RemindAni.exe").VersionInfo.ProductVersion)"
+            $exe = @("$env:LOCALAPPDATA\Programs\RemindAni\RemindAni.exe", "$env:ProgramFiles\RemindAni\RemindAni.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+            "Installed $tag -> $exe $((Get-Item $exe).VersionInfo.ProductVersion)"
+            Set-Content exe-path.txt $exe
           }
 
       - name: Click through the update like a user
         run: |
           npm install --no-save --no-audit --no-fund playwright-core@1.64.0 | Out-Null
+          $env:REMINDANI_EXE = Get-Content exe-path.txt
+          $env:SCENARIO = '${{ inputs.scenario }}'
           node .github/scripts/click-update.mjs
 
       - name: Wait for the app to come back
@@ -64,10 +73,11 @@ jobs:
           if ($back) { "App window back after $([int]($back - $clicked).TotalSeconds) s" } else { "App window NOT back after 120 s" }
           Start-Sleep 4
           Shot 'after'
-          $exe = "$env:LOCALAPPDATA\Programs\RemindAni\RemindAni.exe"
+          $exe = Get-Content exe-path.txt
           "Installed exe version: $((Get-Item $exe -ErrorAction SilentlyContinue).VersionInfo.ProductVersion)"
-          Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
-            Where-Object DisplayName -like 'RemindAni*' | Select-Object DisplayName, DisplayVersion | Format-List
+          "Files in install folder: $((Get-ChildItem (Split-Path $exe) -ErrorAction SilentlyContinue).Count)"
+          Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
+            Where-Object DisplayName -like 'RemindAni*' | Select-Object DisplayName, DisplayVersion, PSPath | Format-List
           Get-Process RemindAni -ErrorAction SilentlyContinue | Select-Object Id, StartTime, MainWindowTitle | Format-Table -AutoSize
           "Updater log:"
           Get-Content "$env:APPDATA\RemindAni\logs\updater.log" -ErrorAction SilentlyContinue
