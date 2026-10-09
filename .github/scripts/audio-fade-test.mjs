@@ -16,39 +16,50 @@ const check = (ok, what) => {
 
 function helper() {
   const child = spawn(exe, ['--exclude', 'node', '--state', state], { stdio: ['pipe', 'pipe', 'inherit'], windowsHide: true });
-  const lines = [];
-  let buffer = '';
+  // Every line the helper has said, in order; waits look from a given position onwards.
+  const history = [];
   const waiters = [];
+  let buffer = '';
   child.stdout.setEncoding('utf8');
   child.stdout.on('data', (d) => {
     buffer += d;
     let i;
     while ((i = buffer.indexOf('\n')) >= 0) {
-      const line = buffer.slice(0, i).trim();
+      history.push(buffer.slice(0, i).trim());
       buffer = buffer.slice(i + 1);
-      lines.push(line);
-      for (const w of [...waiters]) if (w.test(line)) waiters.splice(waiters.indexOf(w), 1) && w.resolve(line);
+      for (const w of [...waiters]) w.check();
     }
   });
-  const until = (re, ms = 8000) =>
+  const until = (re, from = 0, ms = 8000) =>
     new Promise((resolve, reject) => {
-      const found = lines.find((l) => re.test(l));
-      if (found) return resolve(found);
-      const w = { test: (l) => re.test(l), resolve };
+      const w = {
+        check() {
+          const at = history.findIndex((l, j) => j >= from && re.test(l));
+          if (at < 0) return false;
+          waiters.splice(waiters.indexOf(w), 1);
+          clearTimeout(w.timer);
+          resolve(at);
+          return true;
+        },
+      };
       waiters.push(w);
-      setTimeout(() => reject(new Error(`timed out waiting for ${re}`)), ms);
+      if (w.check()) return;
+      w.timer = setTimeout(() => reject(new Error(`timed out waiting for ${re}`)), ms);
     });
   const send = (cmd) => child.stdin.write(`${cmd}\n`);
   // Volume of the playing PowerShell session, as the helper reports it.
-  const volume = async () => {
-    lines.length = 0;
+  const sessions = async () => {
+    const from = history.length;
     send('list');
-    await until(/^listed$/);
-    const row = lines.find((l) => /^session powershell /i.test(l));
+    const end = await until(/^listed$/, from);
+    return history.slice(from, end).filter((l) => l.startsWith('session '));
+  };
+  const volume = async () => {
+    const row = (await sessions()).find((l) => /^session powershell /i.test(l));
     return row ? Number(row.split(' ')[2]) : null;
   };
   const exited = new Promise((r) => child.on('exit', (code) => r(code)));
-  return { child, send, until, volume, exited, lines };
+  return { child, send, until, sessions, volume, exited, history };
 }
 
 rmSync(state, { force: true });
@@ -58,8 +69,8 @@ await sleep(4000);
 
 const a = helper();
 await a.until(/^ready$/);
+console.log('sessions:', (await a.sessions()).join(' | ') || '(none)');
 const start = await a.volume();
-console.log('sessions:', a.lines.filter((l) => l.startsWith('session')).join(' | ') || '(none)');
 check(start != null, `the playing app has an audio session (volume ${start})`);
 if (start == null) {
   player.kill();
