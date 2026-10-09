@@ -23,6 +23,15 @@ class Popup extends EventEmitter {
     this.current = null;
     this.phase = 'hidden';
     this.area = null;
+    this.companionTurn = 0;
+  }
+
+  // Each card brings the next picture, so they take turns.
+  nextCompanion() {
+    const { companions, companionOn } = this.store.data.settings;
+    if (!companionOn || !companions.length || this.solid) return null;
+    const c = companions[this.companionTurn++ % companions.length];
+    return `app://ui/companion/${encodeURIComponent(c.file)}`;
   }
 
   init() {
@@ -130,6 +139,7 @@ class Popup extends EventEmitter {
       defaultWait: r.wait ?? settings.defaultWait,
       position: settings.position,
       dim: settings.dim && !this.solid,
+      companion: this.nextCompanion(),
       remaining: this.queue.length,
       solid: this.solid,
       perf: this.perf,

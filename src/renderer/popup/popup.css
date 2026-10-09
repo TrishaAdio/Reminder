@@ -57,6 +57,44 @@ body {
   box-shadow: var(--shadow-lift);
 }
 
+/* The companion stands behind the card, so the card's top edge hides its lower part and it
+   looks like it is peeking over. It sits under the shadow layer, which gives it a soft contact
+   shadow where it meets the card. */
+.buddy {
+  position: absolute;
+  right: 40px;
+  bottom: calc(100% - 68px);
+  height: 212px;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+}
+
+.buddy-img {
+  display: block;
+  height: 100%;
+  width: auto;
+  filter: drop-shadow(0 2px 6px rgba(20, 14, 6, 0.18));
+}
+
+.buddy[hidden] {
+  display: none;
+}
+
+.showing .buddy-img {
+  animation: bob 3.4s var(--release-easing) 1.2s infinite alternate;
+}
+
+@keyframes bob {
+  from { transform: translateY(0) rotate(0deg); }
+  to { transform: translateY(-4px) rotate(-1.2deg); }
+}
+
+/* Make room above the card for the part that sticks out. */
+.has-buddy.pos-top .stage,
+.has-buddy.pos-top-right .stage {
+  padding-top: 186px;
+}
+
 /* Cards waiting in the queue peek out from under this one. */
 .peek {
   background: var(--peek);
@@ -275,7 +313,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .showing .pulse {
+  .showing .pulse,
+  .showing .buddy-img {
     animation: none;
   }
 }

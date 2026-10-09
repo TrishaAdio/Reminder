@@ -52,7 +52,7 @@ function boot() {
     await store.load();
     await store.pruneSounds();
     nativeTheme.themeSource = store.data.settings.theme;
-    handleScheme(store.soundsDir);
+    handleScheme({ sounds: store.soundsDir, companions: store.companionsDir });
     app.on('will-quit', () => store.flush());
 
     const env = await loadLocale();

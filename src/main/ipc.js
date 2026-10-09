@@ -122,6 +122,7 @@ function registerIpc({ store, engine, popup, updates, env, mainWindow }) {
     volume: (v) => typeof v === 'number' && ((data.settings.volume = Math.min(1, Math.max(0, v))), true),
     openAtLogin: (v) => typeof v === 'boolean' && (loginItem.set(v), true),
     dim: (v) => typeof v === 'boolean' && ((data.settings.dim = v), true),
+    companionOn: (v) => typeof v === 'boolean' && ((data.settings.companionOn = v), true),
     position: (v) => POSITIONS.includes(v) && ((data.settings.position = v), true),
     theme: (v) => {
       if (!THEMES.includes(v)) return false;
@@ -138,6 +139,32 @@ function registerIpc({ store, engine, popup, updates, env, mainWindow }) {
 
   handle('settings:set', (key, value) => {
     if (setters[key]?.(value)) engine.commit();
+  });
+
+  handle('companion:add', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: 'Choose pictures for the reminder card',
+      filters: [{ name: 'Pictures', extensions: ['png', 'webp', 'gif', 'jpg', 'jpeg'] }],
+      properties: ['openFile', 'multiSelections'],
+    });
+    if (canceled || !filePaths.length) return { added: 0 };
+    let added = 0;
+    let failed = 0;
+    for (const file of filePaths) {
+      try {
+        await store.importCompanion(file);
+        added++;
+      } catch {
+        failed++;
+      }
+    }
+    engine.commit();
+    return { added, failed };
+  });
+
+  handle('companion:remove', async (file) => {
+    await store.removeCompanion(String(file));
+    engine.commit();
   });
 
   handle('pause:set', (kind) => {

@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('remindani', {
   chooseSound: (id) => ipcRenderer.invoke('sound:choose', id),
   setSetting: (key, value) => ipcRenderer.invoke('settings:set', key, value),
   pause: (kind) => ipcRenderer.invoke('pause:set', kind),
+  addCompanions: () => ipcRenderer.invoke('companion:add'),
+  removeCompanion: (file) => ipcRenderer.invoke('companion:remove', file),
   checkForUpdates: () => ipcRenderer.invoke('update:check'),
   downloadUpdate: () => ipcRenderer.invoke('update:download'),
   retryUpdate: () => ipcRenderer.invoke('update:retry'),

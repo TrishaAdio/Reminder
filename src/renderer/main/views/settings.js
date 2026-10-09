@@ -69,6 +69,48 @@ export function settingsView({ api, state, fmt, player, actions }) {
     label: 'Closing a card waits',
     onChange: (v) => api.setSetting('defaultWait', v),
   });
+  // Pictures that peek over the top of the card, one per card in turn.
+  const companionToggle = toggle({ checked: s.settings.companionOn, label: 'Pictures on the card', onChange: (on) => api.setSetting('companionOn', on) });
+  const strip = h('div', { class: 'buddies', role: 'list', 'aria-label': 'Pictures' });
+  const addPictures = h('button', { class: 'button small pressable', type: 'button', onclick: () => addCompanions() }, h('span', { html: icon('plus') }), 'Add pictures…');
+  const companionNote = h('p', { class: 'field-sub t-small buddy-note', role: 'status' });
+  const companionRow = h(
+    'div',
+    { class: 'field buddy-field', 'data-key': 'buddies' },
+    h('div', { class: 'buddy-head' }, h('span', { class: 'field-label grow stack' }, 'Pictures on the card', h('span', { class: 'field-sub t-small' }, 'They peek over the top of each card, taking turns.')), companionToggle.el),
+    strip,
+    h('div', { class: 'buddy-foot' }, addPictures, companionNote),
+  );
+  let shownBuddies = null;
+
+  async function addCompanions() {
+    const r = await api.addCompanions();
+    setText(companionNote, r?.failed ? `${r.failed} file${r.failed === 1 ? '' : 's'} couldn’t be added. Use png, webp, gif or jpg.` : '');
+  }
+
+  function paintCompanions() {
+    const list = s.settings.companions;
+    const key = list.map((c) => c.file).join();
+    if (key !== shownBuddies) {
+      shownBuddies = key;
+      strip.replaceChildren(
+        ...list.map((c) =>
+          h(
+            'div',
+            { class: 'buddy-thumb', role: 'listitem' },
+            h('img', { src: `../companion/${encodeURIComponent(c.file)}`, alt: c.name, draggable: 'false' }),
+            h('button', { class: 'buddy-remove pressable', type: 'button', 'aria-label': `Remove ${c.name}`, title: 'Remove', html: icon('close'), onclick: () => api.removeCompanion(c.file) }),
+          ),
+        ),
+      );
+    }
+    strip.hidden = !list.length;
+    companionToggle.set(s.settings.companionOn);
+    addPictures.disabled = list.length >= 24;
+    if (!list.length && !companionNote.textContent) setText(companionNote, 'Transparent PNGs look best.');
+    else if (list.length && companionNote.textContent === 'Transparent PNGs look best.') setText(companionNote, '');
+  }
+
   const sample = h('button', { class: 'button small pressable', type: 'button', onclick: () => actions.sample() }, h('span', { html: icon('play') }), 'Show a sample card');
   const sampleRow = field('See it on screen', sample);
 
@@ -150,6 +192,7 @@ export function settingsView({ api, state, fmt, player, actions }) {
       'card',
       h('div', { class: 'field position' }, preview.el, h('span', { class: 'field-label grow stack' }, 'Position', h('span', { class: 'field-sub t-small' }, 'On the screen your pointer is on.')), h('div', { class: 'seg-wide' }, position.el)),
       field('Dim the screen behind the card', dim.el, 'Clicks still go through to what’s underneath.'),
+      companionRow,
       field('Closing a card waits', h('div', { class: 'seg-fixed' }, defaultWait.el), 'Used by reminders set to the app default.'),
       sampleRow,
     ),
@@ -178,6 +221,7 @@ export function settingsView({ api, state, fmt, player, actions }) {
     dim.set(st.dim);
     defaultWait.set(st.defaultWait);
     sampleRow.hidden = !s.reminders.length;
+    paintCompanions();
     const paused = st.pausedUntil != null && st.pausedUntil > Date.now();
     pauseButtons.hidden = paused;
     resume.hidden = !paused;

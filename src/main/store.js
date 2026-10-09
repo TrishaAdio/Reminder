@@ -14,19 +14,26 @@ const DEFAULT_SETTINGS = {
   dim: true,
   quiet: { enabled: false, from: '22:00', to: '07:00' },
   pausedUntil: null,
+  companionOn: true,
+  companions: [],
 };
+
+const IMAGE_EXT = new Set(['.png', '.webp', '.gif', '.jpg', '.jpeg']);
+const MAX_COMPANIONS = 24;
 
 class Store {
   constructor(dir) {
     this.dir = dir;
     this.file = path.join(dir, 'reminders.json');
     this.soundsDir = path.join(dir, 'sounds');
+    this.companionsDir = path.join(dir, 'companions');
     this.data = { version: 2, settings: structuredClone(DEFAULT_SETTINGS), reminders: [], runtime: {} };
     this.timer = null;
   }
 
   async load() {
     await fsp.mkdir(this.soundsDir, { recursive: true });
+    await fsp.mkdir(this.companionsDir, { recursive: true });
     try {
       const parsed = JSON.parse(await fsp.readFile(this.file, 'utf8'));
       const settings = { ...DEFAULT_SETTINGS, ...parsed.settings };
@@ -72,6 +79,25 @@ class Store {
     const file = `${randomUUID()}${ext}`;
     await fsp.copyFile(source, path.join(this.soundsDir, file));
     return { kind: 'file', file, name: path.basename(source) };
+  }
+
+  // Copied in, so the picture keeps working after the original is moved or deleted.
+  async importCompanion(source) {
+    const ext = path.extname(source).toLowerCase();
+    if (!IMAGE_EXT.has(ext)) throw new Error('unsupported');
+    const list = this.data.settings.companions;
+    if (list.length >= MAX_COMPANIONS) throw new Error('full');
+    const file = `${randomUUID()}${ext}`;
+    await fsp.copyFile(source, path.join(this.companionsDir, file));
+    list.push({ file, name: path.basename(source) });
+  }
+
+  async removeCompanion(file) {
+    const list = this.data.settings.companions;
+    const i = list.findIndex((c) => c.file === file);
+    if (i < 0) return;
+    list.splice(i, 1);
+    await fsp.rm(path.join(this.companionsDir, file), { force: true });
   }
 
   // Runs at startup only, so a deleted reminder's sound survives until its undo window is long gone.

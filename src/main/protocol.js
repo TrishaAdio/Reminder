@@ -15,12 +15,13 @@ function registerScheme() {
 }
 
 // Sounds share the pages' origin: Web Audio reads silence from cross-origin media.
-function resolve(url, userSounds) {
+function resolve(url, dirs) {
   const { host, pathname } = new URL(url);
   if (host !== 'ui') return null;
   const rel = decodeURIComponent(pathname);
   if (rel.startsWith('/sound/builtin/')) return inside(BUILTIN_SOUNDS, rel.slice(15));
-  if (rel.startsWith('/sound/user/')) return inside(userSounds, rel.slice(12));
+  if (rel.startsWith('/sound/user/')) return inside(dirs.sounds, rel.slice(12));
+  if (rel.startsWith('/companion/')) return inside(dirs.companions, rel.slice(11));
   return inside(RENDERER, rel);
 }
 
@@ -29,9 +30,9 @@ function inside(root, rel) {
   return file.startsWith(root + path.sep) ? file : null;
 }
 
-function handleScheme(userSounds) {
+function handleScheme(dirs) {
   protocol.handle('app', (request) => {
-    const file = resolve(request.url, userSounds);
+    const file = resolve(request.url, dirs);
     if (!file) return new Response('Not found', { status: 404 });
     return net.fetch(pathToFileURL(file).toString());
   });

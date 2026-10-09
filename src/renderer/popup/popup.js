@@ -9,6 +9,8 @@ const $ = (id) => document.getElementById(id);
 const card = document.querySelector('.card');
 const content = document.querySelector('.content');
 const dim = document.querySelector('.dim');
+const buddy = document.querySelector('.buddy');
+const buddyImg = document.getElementById('buddy');
 const doneButton = document.querySelector('[data-action="done"]');
 const doneLabel = doneButton.querySelector('.label');
 const tick = doneButton.querySelector('.tick');
@@ -29,7 +31,10 @@ function render(p) {
   // A button clicked on an earlier card keeps focus; Enter must mean Done on every new card.
   if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
   document.documentElement.classList.toggle('solid', p.solid);
-  document.body.className = `pos-${p.position}`;
+  const showing = document.body.classList.contains('showing');
+  document.body.className = `pos-${p.position}${p.companion ? ' has-buddy' : ''}${showing ? ' showing' : ''}`;
+  buddy.hidden = !p.companion;
+  if (p.companion) buddyImg.src = p.companion;
   card.className = `card ${tintClass(p.icon)}`;
   $('tile').className = 'tile';
   $('tile').innerHTML = icon(p.icon);
@@ -64,8 +69,22 @@ function buttonFor(action) {
   return document.querySelector(`[data-action="${action}"]`);
 }
 
+// The companion pops up from behind the card once the card has landed: one springy rise.
+function buddyUp(delay = 160) {
+  if (buddy.hidden) return;
+  if (reducedMotion()) return animate(buddy, [{ opacity: 0 }, { opacity: 1 }], FADE);
+  return animate(buddy, [{ opacity: 0, transform: 'translateY(55%) scale(0.92)' }, { opacity: 1, transform: 'none' }], 'release', { delay });
+}
+
+function buddyDown() {
+  if (buddy.hidden) return Promise.resolve();
+  if (reducedMotion()) return animate(buddy, [{ opacity: 1 }, { opacity: 0 }], FADE);
+  return animate(buddy, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(45%) scale(0.96)' }], 'exit');
+}
+
 function enter() {
   document.body.classList.add('showing');
+  buddyUp(current.solid ? 0 : 200);
   if (current.dim) animate(dim, [{ opacity: 0 }, { opacity: 1 }], { duration: 420, easing: spring('exit').easing });
   if (calm()) return animate(card, [{ opacity: 0, transform: 'none' }, { opacity: 1, transform: 'none' }], FADE);
   if (current.perf) measureFrames(700).then(api.reportFrames);
@@ -98,6 +117,7 @@ function restoreDone() {
 
 function leave(action) {
   document.body.classList.remove('showing');
+  buddyDown();
   if (current?.dim) animate(dim, [{ opacity: 1 }, { opacity: 0 }], 'exit');
   if (calm()) return animate(card, [{ opacity: 1 }, { opacity: 0 }], FADE);
   // Done settles in place; Wait shrinks away toward the tray, where it will come back from.
@@ -108,8 +128,12 @@ function leave(action) {
 // The card stays; only its content changes, nudged in the direction the last one went.
 async function swap(next, action) {
   const away = action === 'done' ? 'translateY(-6px)' : `translate(${toward.x * 16}px, ${toward.y * 16}px)`;
-  await animate(content, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: calm() ? 'none' : away }], calm() ? FADE : 'exit');
+  await Promise.all([
+    animate(content, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: calm() ? 'none' : away }], calm() ? FADE : 'exit'),
+    buddyDown(),
+  ]);
   render(next);
+  buddyUp(60);
   ({ toward } = await api.ready(rect()));
   sound.play(next);
   restoreDone();
