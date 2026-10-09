@@ -51,11 +51,17 @@ jobs:
             Set-Content exe-path.txt $exe
           }
 
-      - name: Guard smoke test (plain Node, dummy target)
+      - name: Guard smoke test (start four ways, parent exits at once)
+        run: node .github/scripts/guard-smoke.cjs
+
+      - name: Guard smoke results
         run: |
-          node .github/scripts/guard-smoke.cjs
-          "notepad running: $([bool](Get-Process notepad -ErrorAction SilentlyContinue))"
-          Get-Process notepad -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep 20
+          foreach ($n in 'A', 'B', 'C', 'D') {
+            "variant $n log: $((Get-Content "$env:TEMP\guard-$n.log" -ErrorAction SilentlyContinue) -join ' | ')"
+            "variant $n reopened its target: $([bool](Get-Process "note$n" -ErrorAction SilentlyContinue))"
+          }
+          Get-Process noteA, noteB, noteC, noteD -ErrorAction SilentlyContinue | Stop-Process -Force
 
       - name: Click through the update like a user
         run: |
