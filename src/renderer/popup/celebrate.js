@@ -577,15 +577,61 @@ function nextEffect(data) {
   return name;
 }
 
-const PRAISE = ['Nailed it!', 'Well done!', 'Nice one!', 'Yes!', 'Look at you!', 'Great job!', 'Done and dusted!', 'Way to go!', 'Perfect!', 'Love that!'];
-const HOT = ['On a roll!', 'Unstoppable!', 'On fire!', 'Crushing it!'];
+// Cute words for the badge: [line, emoji]. Emoji are kept to ones Windows 10 can draw.
+const CUTE = [
+  ['Yay, you did it!', '🎉'],
+  ['Look at you go!', '✨'],
+  ['So proud of you!', '💖'],
+  ['Little win, big smile!', '🌷'],
+  ['Gold star for you!', '🌟'],
+  ['Aww, well done!', '🧸'],
+  ['You’re doing amazing!', '💕'],
+  ['Cutie did it!', '🌸'],
+  ['High five!', '🙌'],
+  ['Happy you, happy day!', '🌈'],
+];
 
-function praise(data, streak) {
-  const list = streak >= 3 ? HOT : PRAISE;
-  let word = pick(list);
-  if (word === data.word) word = list[(list.indexOf(word) + 1) % list.length];
-  data.word = word;
-  return word;
+// Lines that match the reminder, by its icon.
+const FOR_REMINDER = {
+  drop: [['Hydrated & adorable!', '💧'], ['Sip sip hooray!', '💧'], ['Water you doing? Winning!', '💦']],
+  eye: [['Happy eyes!', '✨'], ['Your eyes say thank you!', '💚'], ['Eyes rested, cutie!', '👀']],
+  moon: [['Sweet dreams soon!', '🌙'], ['Cozy mode: on!', '🧸'], ['Sleepy time, superstar!', '💤']],
+  pill: [['Healthy & happy!', '💊'], ['Taking care of you!', '💖'], ['Good job, healthy bean!', '🌱']],
+  stretch: [['Stretchy & strong!', '🤸'], ['Wiggle wiggle, done!', '💃'], ['Feeling bendy!', '🌿']],
+  cup: [['Cup of yay!', '☕'], ['Tea-rrific!', '🍵']],
+  book: [['Smarty pants!', '📚'], ['Big brain energy!', '🧠']],
+  sun: [['You’re sunshine!', '☀️'], ['Bright and done!', '🌻']],
+};
+
+// Lines that match the celebration on screen.
+const FOR_EFFECT = {
+  confetti: [['Party time!', '🎉'], ['Yippee!', '🎊']],
+  fireworks: [['You’re dazzling!', '🎆'], ['Sparkly work!', '✨']],
+  hearts: [['Love that for you!', '💖'], ['Heart eyes!', '😍']],
+  stars: [['Superstar!', '🌟'], ['Shine on, star!', '⭐']],
+  bubbles: [['Bubbly & done!', '💙'], ['Pop pop, hooray!', '🎈']],
+  petals: [['Blooming lovely!', '🌸'], ['Pretty as petals!', '🌷']],
+};
+
+const FIRST = [['First one, yay!', '🌱'], ['Great start, cutie!', '🌅'], ['And so it begins!', '🐣']];
+const STREAK = [['Combo ×{n}!', '✨'], ['On a cute streak!', '🔥'], ['Unstoppable cutie!', '💪'], ['{n} in a row, wow!', '🤩']];
+
+function praise(data, { streak, count, effect, icon }) {
+  let list;
+  // Streak lines always mark 3 and every 5th in a row, and only now and then in between,
+  // so the lines about the reminder itself still get their turn.
+  const milestone = streak === 3 || (streak >= 5 && streak % 5 === 0);
+  if (count === 1) list = FIRST;
+  else if (streak >= 3 && (milestone || Math.random() < 0.2)) list = STREAK;
+  else {
+    const roll = Math.random();
+    list = (roll < 0.5 && FOR_REMINDER[icon]) || (roll < 0.75 && FOR_EFFECT[effect]) || CUTE;
+  }
+  // Never the same line twice in a row.
+  let entry = pick(list);
+  if (entry[0] === data.word && list.length > 1) entry = list[(list.indexOf(entry) + 1) % list.length];
+  data.word = entry[0];
+  return { line: entry[0].replace('{n}', streak), emoji: entry[1], saysStreak: entry[0].includes('{n}') };
 }
 
 // ── Shared moment: card jump, shockwave, flash, praise badge ─────────────────────────────
@@ -618,12 +664,18 @@ function badge(card, { word, count, streak, check, leaving, calm }) {
   text.className = 'praise-text';
   const title = document.createElement('span');
   title.className = 'praise-title';
-  title.textContent = word;
+  title.textContent = `${word.line} `;
+  const emoji = document.createElement('span');
+  emoji.className = 'praise-emoji';
+  emoji.textContent = word.emoji;
+  title.append(emoji);
   text.append(title);
   if (count) {
     const sub = document.createElement('span');
     sub.className = 'praise-sub';
-    sub.textContent = `${count === 1 ? 'First one today' : `${count} done today`}${streak >= 2 ? ` · ${streak} in a row` : ''}`;
+    // The streak count goes here unless the line already says it ("5 in a row, wow!").
+    const run = streak >= 2 && !word.saysStreak ? ` · ${streak} in a row` : '';
+    sub.textContent = `${count === 1 ? 'First one today' : `${count} done today`}${run}`;
     text.append(sub);
   }
   el.append(mark, text);
@@ -644,6 +696,20 @@ function badge(card, { word, count, streak, check, leaving, calm }) {
   const done = settle(el.animate(frames, { duration: 1700, delay: calm ? 0 : 140, easing: 'linear', fill: 'both' }));
   if (!calm) {
     settle(mark.animate([{ transform: 'scale(0) rotate(-90deg)' }, { transform: 'scale(1.25) rotate(8deg)', offset: 0.6 }, { transform: 'none' }], { duration: 520, delay: 220, easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)', fill: 'both' }));
+    // The emoji pops in last and gives a happy little wiggle.
+    settle(
+      emoji.animate(
+        [
+          { transform: 'scale(0) rotate(-30deg)' },
+          { transform: 'scale(1.45) rotate(12deg)', offset: 0.32 },
+          { transform: 'scale(0.92) rotate(-10deg)', offset: 0.52 },
+          { transform: 'scale(1.08) rotate(6deg)', offset: 0.7 },
+          { transform: 'scale(1) rotate(-3deg)', offset: 0.85 },
+          { transform: 'none' },
+        ],
+        { duration: 820, delay: 340, easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)', fill: 'both' },
+      ),
+    );
   }
   return done.then(() => el.remove());
 }
@@ -651,7 +717,7 @@ function badge(card, { word, count, streak, check, leaving, calm }) {
 // Plays one celebration. `next` is the main process's reply (the next card, or null), which
 // decides where the badge goes. Resolves `reacted` when the card and picture have finished
 // reacting (so the card can leave) and `landed` once everything is gone (so the window can hide).
-export function celebrate({ button, card, buddy, calm, volume, counts, check, next }) {
+export function celebrate({ button, card, buddy, calm, volume, counts, check, next, icon }) {
   const data = load();
   const today = new Date().toDateString();
   if (data.day !== today) Object.assign(data, { day: today, done: 0, streak: 0 });
@@ -661,7 +727,7 @@ export function celebrate({ button, card, buddy, calm, volume, counts, check, ne
   }
   const streak = counts ? data.streak : 0;
   const name = nextEffect(data);
-  const word = praise(data, streak);
+  const word = praise(data, { streak, count: counts ? data.done : 0, effect: name, icon });
   save(data);
 
   const effect = EFFECTS[name];

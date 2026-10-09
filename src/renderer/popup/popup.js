@@ -172,6 +172,7 @@ async function respond(action) {
       counts: !current.preview,
       check: icon('check'),
       next: reply,
+      icon: current.icon,
     });
     await Promise.all([confirmDone(), party.reacted]);
   } else if (!current.preview) {
