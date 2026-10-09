@@ -51,18 +51,6 @@ jobs:
             Set-Content exe-path.txt $exe
           }
 
-      - name: Guard smoke test (start four ways, parent exits at once)
-        run: node .github/scripts/guard-smoke.cjs
-
-      - name: Guard smoke results
-        run: |
-          Start-Sleep 20
-          foreach ($n in 'A', 'B', 'C', 'D') {
-            "variant $n log: $((Get-Content "$env:TEMP\guard-$n.log" -ErrorAction SilentlyContinue) -join ' | ')"
-            "variant $n reopened its target: $([bool](Get-Process "note$n" -ErrorAction SilentlyContinue))"
-          }
-          Get-Process noteA, noteB, noteC, noteD -ErrorAction SilentlyContinue | Stop-Process -Force
-
       - name: Click through the update like a user
         run: |
           npm install --no-save --no-audit --no-fund playwright-core@1.64.0 | Out-Null

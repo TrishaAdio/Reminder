@@ -35,18 +35,17 @@ Log 'gave up after 10 minutes'
 `;
 }
 
-function startRelaunchGuard(exe, log, { detached = false } = {}) {
+function startRelaunchGuard(exe, log) {
   if (process.platform !== 'win32') return;
   try {
     // EncodedCommand (UTF-16LE base64) sidesteps every quoting rule between Node and PowerShell.
     const encoded = Buffer.from(script(exe, log.file), 'utf16le').toString('base64');
-    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-EncodedCommand', encoded], {
-      detached,
-      stdio: 'ignore',
-      windowsHide: true,
-    });
+    // Windows PowerShell exits at once when started without a console (a plain detached
+    // spawn), so cmd's start gives it one; -WindowStyle Hidden then hides that console.
+    const ps = ['powershell.exe', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-EncodedCommand', encoded];
+    const child = spawn('cmd.exe', ['/d', '/c', 'start', '""', '/min', ...ps], { detached: true, stdio: 'ignore', windowsHide: true });
     child.unref();
-    log.info(`relaunch guard started (pid ${child.pid}) for ${exe}`);
+    log.info(`relaunch guard started for ${exe}`);
   } catch (err) {
     log.error('relaunch guard failed to start', err);
   }
