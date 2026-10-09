@@ -1,7 +1,7 @@
 import { animate, spring, reducedMotion, FADE, installSpringProperties, pulse } from '../shared/spring.js';
 import { icon, tintClass } from '../shared/icons.js';
 import { measureFrames } from './frames.js';
-import { celebrate } from './celebrate.js';
+import { celebrate, breakStreak } from './celebrate.js';
 
 installSpringProperties();
 
@@ -122,6 +122,10 @@ function restoreDone() {
 }
 
 function leave(action) {
+  // The window can stay up a few seconds more for the celebration; the faded card must not
+  // catch the pointer meanwhile, or clicks there would land on nothing.
+  card.style.pointerEvents = 'none';
+  api.setInteractive(false);
   document.body.classList.remove('showing');
   buddyDown();
   if (current?.dim) animate(dim, [{ opacity: 1 }, { opacity: 0 }], 'exit');
@@ -166,8 +170,11 @@ async function respond(action) {
       volume: current.volume,
       counts: !current.preview,
       check: icon('check'),
+      next: reply,
     });
     await Promise.all([confirmDone(), party.reacted]);
+  } else if (!current.preview) {
+    breakStreak();
   }
   const next = await reply;
   if (next) {
@@ -240,6 +247,7 @@ function createSound() {
 }
 
 api.onShow(async (p) => {
+  card.style.pointerEvents = '';
   resetDone();
   render(p);
   ({ toward } = await api.ready(rect()));
