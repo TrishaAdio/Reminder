@@ -35,13 +35,13 @@ Log 'gave up after 10 minutes'
 `;
 }
 
-function startRelaunchGuard(exe, log) {
+function startRelaunchGuard(exe, log, { detached = false } = {}) {
   if (process.platform !== 'win32') return;
   try {
     // EncodedCommand (UTF-16LE base64) sidesteps every quoting rule between Node and PowerShell.
     const encoded = Buffer.from(script(exe, log.file), 'utf16le').toString('base64');
     const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-EncodedCommand', encoded], {
-      detached: true,
+      detached,
       stdio: 'ignore',
       windowsHide: true,
     });

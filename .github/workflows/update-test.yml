@@ -55,9 +55,10 @@ jobs:
         run: |
           node .github/scripts/guard-smoke.cjs
           Start-Sleep 12
-          "guard-smoke.log:"; Get-Content "$env:TEMP\guard-smoke.log" -ErrorAction SilentlyContinue
-          "notepad running: $([bool](Get-Process notepad -ErrorAction SilentlyContinue))"
-          Get-Process notepad -ErrorAction SilentlyContinue | Stop-Process -Force
+          foreach ($mode in 'detached', 'attached') { "guard-smoke-$mode.log:"; Get-Content "$env:TEMP\guard-smoke-$mode.log" -ErrorAction SilentlyContinue }
+          "detached guard started notepad: $([bool](Get-Process notepad -ErrorAction SilentlyContinue))"
+          "attached guard started charmap: $([bool](Get-Process charmap -ErrorAction SilentlyContinue))"
+          Get-Process notepad, charmap -ErrorAction SilentlyContinue | Stop-Process -Force
 
       - name: Click through the update like a user
         run: |

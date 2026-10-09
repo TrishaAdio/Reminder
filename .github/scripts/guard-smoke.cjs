@@ -7,12 +7,14 @@ const fakeElectron = { app: {} };
 const orig = Module._load;
 Module._load = (req, ...rest) => (req === 'electron' ? fakeElectron : orig(req, ...rest));
 const { startRelaunchGuard } = require(path.resolve('src/main/relaunch-guard.js'));
-const logFile = path.join(process.env.TEMP, 'guard-smoke.log');
-try { fs.rmSync(logFile); } catch {}
 const lines = [];
-startRelaunchGuard(path.join(process.env.WINDIR, 'System32', 'notepad.exe'), {
-  file: logFile,
-  info: (m) => lines.push(m),
-  error: (m, e) => lines.push(`${m} ${e}`),
-});
+for (const detached of [true, false]) {
+  const logFile = path.join(process.env.TEMP, `guard-smoke-${detached ? 'detached' : 'attached'}.log`);
+  try { fs.rmSync(logFile); } catch {}
+  startRelaunchGuard(path.join(process.env.WINDIR, 'System32', detached ? 'notepad.exe' : 'charmap.exe'), {
+    file: logFile,
+    info: (m) => lines.push(m),
+    error: (m, e) => lines.push(`${m} ${e}`),
+  }, { detached });
+}
 console.log(lines.join('\n'));
