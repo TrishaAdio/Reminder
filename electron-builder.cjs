@@ -13,7 +13,9 @@ module.exports = {
   files: ['src/**/*', 'assets/**/*', 'package.json'],
   asar: true,
   electronLanguages: ['en-US'],
-  publish: [{ provider: 'github', owner: updates.owner, repo: updates.repo, releaseType: 'release' }],
+  // Uploads go into a draft that already exists (parallel uploads would otherwise each create
+// their own release); the draft is published once all three files are in.
+  publish: [{ provider: 'github', owner: updates.owner, repo: updates.repo, releaseType: 'draft' }],
   win: {
     target: [{ target: 'nsis', arch: ['x64'] }],
     icon: 'build/icon.ico',
