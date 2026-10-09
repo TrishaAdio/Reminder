@@ -139,6 +139,7 @@ class Popup extends EventEmitter {
       defaultWait: r.wait ?? settings.defaultWait,
       position: settings.position,
       dim: settings.dim && !this.solid,
+      glass: settings.look === 'glass',
       companion: this.nextCompanion(),
       remaining: this.queue.length,
       solid: this.solid,

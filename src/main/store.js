@@ -23,6 +23,7 @@ const DEFAULT_SETTINGS = {
   defaultWait: 2,
   volume: 0.8,
   theme: 'system',
+  look: 'classic',
   position: 'top',
   dim: true,
   quiet: { enabled: false, from: '22:00', to: '07:00' },

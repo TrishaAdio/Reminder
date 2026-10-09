@@ -74,7 +74,7 @@ function boot() {
     });
     await popup.init();
 
-    mainWindow = createMainWindow({ isQuitting });
+    mainWindow = createMainWindow({ isQuitting, look: store.data.settings.look });
     ipc = registerIpc({ store, engine, popup, updates, env, mainWindow });
 
     const describe = () => {

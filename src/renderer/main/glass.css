@@ -1,0 +1,240 @@
+/* Glass look (Settings › General › Style): iOS-style frosted surfaces, capsule controls,
+   green switches, system blue and large titles. Everything here is scoped to :root.glass,
+   so the classic look is untouched. Colours and the material recipe live in tokens.css.
+
+   On Windows 11 the window itself is acrylic (`.material`): the desktop shows through,
+   blurred by the system. Elsewhere the page paints a soft wallpaper for the glass to frost. */
+
+/* ── Backdrop ─────────────────────────────────────────────────────────── */
+
+.glass body {
+  background:
+    radial-gradient(55% 50% at 8% 6%, rgba(122, 168, 255, 0.55), transparent 72%),
+    radial-gradient(48% 45% at 96% 12%, rgba(255, 146, 196, 0.42), transparent 72%),
+    radial-gradient(55% 55% at 82% 98%, rgba(255, 196, 120, 0.42), transparent 72%),
+    radial-gradient(50% 50% at 6% 92%, rgba(124, 226, 196, 0.38), transparent 72%),
+    var(--window);
+}
+
+@media (prefers-color-scheme: dark) {
+  .glass body {
+    background:
+      radial-gradient(55% 50% at 8% 6%, rgba(70, 96, 220, 0.5), transparent 72%),
+      radial-gradient(48% 45% at 96% 12%, rgba(196, 70, 150, 0.36), transparent 72%),
+      radial-gradient(55% 55% at 82% 98%, rgba(220, 120, 40, 0.3), transparent 72%),
+      radial-gradient(50% 50% at 6% 92%, rgba(30, 160, 140, 0.3), transparent 72%),
+      var(--window);
+  }
+}
+
+/* The system material is already blurred desktop; a light veil keeps text readable. */
+.glass.material body {
+  background: rgba(242, 242, 247, 0.38);
+}
+
+@media (prefers-color-scheme: dark) {
+  .glass.material body {
+    background: rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* ── Material ─────────────────────────────────────────────────────────── */
+
+.glass .card,
+.glass .preset,
+.glass .popover {
+  background: linear-gradient(180deg, var(--glass-sheen), transparent 42%), var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 0 0 1px var(--glass-edge), inset 0 1px 0 var(--glass-rim), var(--shadow);
+}
+
+.glass .popover {
+  background: linear-gradient(180deg, var(--glass-sheen), transparent 42%), var(--glass-fill-strong);
+  box-shadow: inset 0 0 0 1px var(--glass-edge), inset 0 1px 0 var(--glass-rim), var(--shadow-lift);
+}
+
+.glass .hero {
+  border-radius: 32px;
+}
+
+.glass .hero:has(.stretched:not([hidden])):hover {
+  background: linear-gradient(180deg, var(--glass-sheen), transparent 42%), var(--glass-fill-strong);
+}
+
+/* ── Title bar: a floating glass capsule with a sliding lens ─────────── */
+
+.glass .tabs {
+  top: 6px;
+  grid-template-columns: repeat(3, 108px);
+  padding: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--glass-sheen), transparent 60%), var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 0 0 1px var(--glass-edge), inset 0 1px 0 var(--glass-rim), var(--shadow);
+}
+
+.glass .tab-thumb {
+  top: 3px;
+  left: 3px;
+  width: 108px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--thumb);
+  box-shadow: var(--shadow-knob), inset 0 1px 0 var(--glass-rim);
+}
+
+.glass .tab {
+  height: 30px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.glass .tab[aria-selected='true'] {
+  color: var(--accent);
+}
+
+.glass .badge-dot {
+  top: 8px;
+  right: 16px;
+  background: #ff3b30;
+}
+
+/* ── Type: iOS large titles and grouped-list headers ───────────────────── */
+
+.glass .page-head .t-title {
+  font-size: 34px;
+  line-height: 41px;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+}
+
+.glass .section-label {
+  margin-left: var(--s5);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* ── Buttons: capsules ─────────────────────────────────────────────────── */
+
+.glass .button,
+.glass .icon-button,
+.glass .back,
+.glass .stepper,
+.glass .stepper-button,
+.glass .time-field,
+.glass .toast-action {
+  border-radius: 999px;
+}
+
+.glass .button {
+  padding: 0 16px;
+}
+
+.glass .button.primary {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 6px 16px -8px var(--accent);
+}
+
+.glass .back {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.glass .back:hover {
+  color: var(--accent);
+}
+
+.glass .time-field {
+  padding: 0 10px;
+}
+
+/* ── Switch: 51 × 31, green, a 27px knob that stretches while pressed ──── */
+
+.glass .toggle {
+  width: 51px;
+  height: 31px;
+  border-radius: 999px;
+}
+
+.glass .toggle-on {
+  background: var(--switch-on);
+}
+
+.glass .toggle-knob {
+  width: 27px;
+  height: 27px;
+  border-radius: 999px;
+}
+
+.glass .toggle[aria-checked='true'] .toggle-knob {
+  transform: translateX(20px);
+}
+
+.glass .toggle:active .toggle-knob {
+  transform: scaleX(1.18);
+}
+
+.glass .toggle[aria-checked='true']:active .toggle-knob {
+  transform: translateX(20px) scaleX(1.18);
+}
+
+/* ── Segmented control: a capsule with a glass lens ────────────────────── */
+
+.glass .segmented {
+  border-radius: 999px;
+}
+
+.glass .seg-thumb,
+.glass .seg-option {
+  border-radius: 999px;
+}
+
+.glass .seg-thumb {
+  box-shadow: var(--shadow-knob), inset 0 1px 0 var(--glass-rim);
+}
+
+.glass .seg-option[aria-checked='true'] {
+  font-weight: 600;
+}
+
+/* ── Days: filled blue circles when chosen ─────────────────────────────── */
+
+.glass .day-fill {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.glass .day[aria-pressed='true'] {
+  color: var(--on-accent);
+}
+
+/* ── Slider: thin track, big white knob ────────────────────────────────── */
+
+.glass .slider::-webkit-slider-thumb {
+  width: 28px;
+  height: 28px;
+  margin-top: -12px;
+}
+
+/* ── Toast: a dark glass capsule ───────────────────────────────────────── */
+
+.glass .toast {
+  border-radius: 999px;
+  padding-left: var(--s5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  backdrop-filter: blur(24px) saturate(1.8);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), var(--shadow-lift);
+}
+
+/* ── Smaller pieces ────────────────────────────────────────────────────── */
+
+.glass .buddy-thumb {
+  box-shadow: inset 0 -22px 0 var(--glass-fill-strong), inset 0 0 0 1px var(--separator);
+}
+
+.glass .mini-screen {
+  border-radius: 8px;
+}

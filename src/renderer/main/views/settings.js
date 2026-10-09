@@ -44,6 +44,17 @@ export function settingsView({ api, state, fmt, player, actions }) {
     onChange: (v) => api.setSetting('theme', v),
   });
 
+  const look = segmented({
+    options: [
+      { value: 'classic', label: 'Classic' },
+      { value: 'glass', label: 'Glass' },
+    ],
+    value: s.settings.look,
+    label: 'Style',
+    onChange: (v) => api.setSetting('look', v),
+  });
+  const lookSub = h('span', { class: 'field-sub t-small' });
+
   const preview = positionPreview();
   const position = segmented({
     options: [
@@ -188,7 +199,13 @@ export function settingsView({ api, state, fmt, player, actions }) {
     'div',
     { class: 'view settings' },
     h('header', { class: 'page-head' }, h('h1', { class: 't-title' }, 'Settings')),
-    group('General', 'general', field('Open at sign-in', login.el, 'Starts quietly in the tray.'), field('Appearance', h('div', { class: 'seg-fixed' }, theme.el))),
+    group(
+      'General',
+      'general',
+      field('Open at sign-in', login.el, 'Starts quietly in the tray.'),
+      field('Appearance', h('div', { class: 'seg-fixed' }, theme.el)),
+      h('div', { class: 'field' }, h('span', { class: 'field-label grow stack' }, 'Style', lookSub), h('div', { class: 'seg-fixed' }, look.el)),
+    ),
     group(
       'Reminder card',
       'card',
@@ -218,6 +235,15 @@ export function settingsView({ api, state, fmt, player, actions }) {
     const st = s.settings;
     login.set(st.openAtLogin);
     theme.set(st.theme);
+    look.set(st.look);
+    setText(
+      lookSub,
+      st.look !== 'glass'
+        ? 'Glass: frosted, see-through surfaces, like iOS.'
+        : s.env.material
+          ? 'Frosted glass, with your desktop showing through.'
+          : 'Frosted glass. On Windows 11 the desktop shows through too.',
+    );
     position.set(st.position);
     preview.set(st.position);
     dim.set(st.dim);

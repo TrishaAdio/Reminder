@@ -2,10 +2,12 @@
 
 const { app, dialog, ipcMain, nativeTheme, shell } = require('electron');
 const { PRESETS, SOUNDS, ICONS, fromPreset, duplicate, applyPatch } = require('./reminders');
+const { usesMaterial } = require('./main-window');
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const POSITIONS = ['top', 'top-right', 'bottom-right', 'center'];
 const THEMES = ['system', 'light', 'dark'];
+const LOOKS = ['classic', 'glass'];
 
 const loginItem = {
   options() {
@@ -35,7 +37,13 @@ function registerIpc({ store, engine, popup, updates, env, mainWindow }) {
     icons: ICONS,
     presets: PRESETS.map(({ id, name, icon, blurb, schedule }) => ({ id, name, icon, blurb, schedule })),
     update: updates.state,
-    env: { locale: env.locale, hourCycle: env.hourCycle, dataPath: store.dir, version: app.getVersion() },
+    env: {
+      locale: env.locale,
+      hourCycle: env.hourCycle,
+      dataPath: store.dir,
+      version: app.getVersion(),
+      material: usesMaterial(store.data.settings.look),
+    },
   });
 
   const send = (channel, value) => {
@@ -128,6 +136,12 @@ function registerIpc({ store, engine, popup, updates, env, mainWindow }) {
       if (!THEMES.includes(v)) return false;
       data.settings.theme = v;
       nativeTheme.themeSource = v;
+      return true;
+    },
+    look: (v) => {
+      if (!LOOKS.includes(v)) return false;
+      data.settings.look = v;
+      mainWindow.setLook(v);
       return true;
     },
     quiet: (v) => {

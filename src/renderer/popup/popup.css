@@ -294,6 +294,50 @@ body {
   background: var(--button-bg);
 }
 
+/* Glass look: a frosted card. It blurs what is inside this window behind it (the dim, the
+   picture's tucked-in lower edge, cards waiting underneath) and lights its rim like iOS. */
+.glass .surface {
+  background: linear-gradient(180deg, var(--glass-sheen), transparent 45%), var(--glass-fill-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 0 0 1px var(--glass-edge), inset 0 1px 0 var(--glass-rim);
+}
+
+.glass .peek {
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  backdrop-filter: blur(18px) saturate(1.6);
+  box-shadow: inset 0 0 0 1px var(--glass-edge), var(--shadow);
+}
+
+.glass .action {
+  border-radius: 999px;
+}
+
+.glass .action.primary {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 8px 20px -10px var(--accent);
+}
+
+.glass .close {
+  background: var(--fill);
+}
+
+.glass .dim {
+  background: rgba(10, 14, 30, 0.28);
+}
+
+@media (prefers-color-scheme: dark) {
+  .glass .dim {
+    background: rgba(0, 0, 0, 0.46);
+  }
+}
+
+.glass.solid .surface {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: var(--window);
+}
+
 /* Solid fallback: no transparency, so no radius, shadow, dim or peeks; a plain hairline. */
 .solid .stage {
   position: static;

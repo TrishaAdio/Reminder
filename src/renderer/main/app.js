@@ -19,6 +19,14 @@ const toaster = createToaster();
 let state = await api.getState();
 const fmt = createFormat(state.env);
 
+// Glass look: iOS-style frosted surfaces; `material` when Windows draws acrylic behind the window.
+function paintLook() {
+  const root = document.documentElement;
+  root.classList.toggle('glass', state.settings.look === 'glass');
+  root.classList.toggle('material', state.settings.look === 'glass' && state.env.material);
+}
+paintLook();
+
 const TABS = [
   { id: 'today', label: 'Today' },
   { id: 'reminders', label: 'Reminders' },
@@ -157,6 +165,7 @@ function go(next, { back = false, section = null } = {}) {
 
 api.onStateChanged((next) => {
   state = next;
+  paintLook();
   const p = route.page;
   if (p?.kind === 'editor' && !state.reminders.some((r) => r.id === p.id)) {
     go({ tab: 'reminders', page: null }, { back: true });

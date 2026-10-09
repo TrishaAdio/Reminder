@@ -32,6 +32,7 @@ function render(p) {
   // A button clicked on an earlier card keeps focus; Enter must mean Done on every new card.
   if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
   document.documentElement.classList.toggle('solid', p.solid);
+  document.documentElement.classList.toggle('glass', Boolean(p.glass));
   const showing = document.body.classList.contains('showing');
   document.body.className = `pos-${p.position}${p.companion ? ' has-buddy' : ''}${showing ? ' showing' : ''}`;
   buddy.hidden = !p.companion;
