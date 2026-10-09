@@ -11,7 +11,7 @@ on:
         required: true
         default: v1.1.0
       scenario:
-        description: normal | allusers (installed for everyone) | reopen (user opens the app again mid-install) | noinstaller (installer never runs; the relaunch guard must bring the app back)
+        description: normal | allusers (installed for everyone) | reopen (user opens the app again mid-install)
         required: true
         default: normal
 
@@ -74,10 +74,6 @@ jobs:
           foreach ($i in 1..120) {
             $p = Get-Process RemindAni -ErrorAction SilentlyContinue | Where-Object MainWindowTitle -eq 'RemindAni'
             if ($p) { $back = Get-Date; break }
-            if ($i -in 1, 6) {
-              "powershell processes at +$i s:"
-              Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | ForEach-Object { "  $($_.ProcessId) parent $($_.ParentProcessId) $($_.CommandLine.Substring(0, [Math]::Min(120, $_.CommandLine.Length)))" }
-            }
             if ($i -in 5, 15, 30) { Shot "during-$i" }
             Start-Sleep 1
           }

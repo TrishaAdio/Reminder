@@ -4,7 +4,6 @@ const { EventEmitter } = require('node:events');
 const { app, Notification } = require('electron');
 const FakeUpdater = require('./fake-updater');
 const { createUpdateLog } = require('./update-log');
-const { startRelaunchGuard } = require('./relaunch-guard');
 
 const SIX_HOURS = 6 * 60 * 60 * 1000;
 const FIRST_CHECK = 15_000;
@@ -95,8 +94,9 @@ class Updates extends EventEmitter {
     if (Notification.isSupported()) {
       new Notification({ title: `Updating RemindAni to ${this.state.version}`, body: 'It opens again by itself in a moment. Your reminders are kept.', silent: true }).show();
     }
-    startRelaunchGuard(process.execPath, this.log);
-    // Silent install, then relaunch: per-user installs need no admin prompt.
+    // Silent install, then relaunch: per-user installs need no admin prompt. The installer itself
+    // starts the new version (--force-run). Never start hidden or encoded PowerShell from here:
+    // antivirus heuristics (Avast) quarantine RemindAni.exe for it.
     setImmediate(() => this.client.quitAndInstall(true, true));
   }
 }
