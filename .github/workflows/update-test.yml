@@ -54,11 +54,8 @@ jobs:
       - name: Guard smoke test (plain Node, dummy target)
         run: |
           node .github/scripts/guard-smoke.cjs
-          Start-Sleep 12
-          foreach ($mode in 'detached', 'attached') { "guard-smoke-$mode.log:"; Get-Content "$env:TEMP\guard-smoke-$mode.log" -ErrorAction SilentlyContinue }
-          "detached guard started notepad: $([bool](Get-Process notepad -ErrorAction SilentlyContinue))"
-          "attached guard started charmap: $([bool](Get-Process charmap -ErrorAction SilentlyContinue))"
-          Get-Process notepad, charmap -ErrorAction SilentlyContinue | Stop-Process -Force
+          "notepad running: $([bool](Get-Process notepad -ErrorAction SilentlyContinue))"
+          Get-Process notepad -ErrorAction SilentlyContinue | Stop-Process -Force
 
       - name: Click through the update like a user
         run: |
