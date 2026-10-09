@@ -372,8 +372,9 @@ body {
   border-radius: var(--r-control);
 }
 
-/* Done celebrations (celebrate.js). The layer covers the whole window, above the card.
-   Pieces get their pixel size inline and move by transform from the top-left corner. */
+/* Done celebrations (celebrate.js). The layer covers the whole window, above the card:
+   particles are drawn on one canvas (particles.js); the flash, shockwaves and badge are
+   elements positioned from the top-left corner and moved by transform. */
 :root {
   --bit-l: 0.72;
   --bit-c: 0.17;
@@ -400,51 +401,14 @@ body {
   will-change: transform, opacity;
 }
 
-.bit {
-  background: var(--bit);
+/* The canvas the particle engine draws on, and a hidden probe it resolves colours with. */
+.burst > .burst-canvas {
+  width: 100%;
+  height: 100%;
 }
 
-.bit.dot { border-radius: 50%; }
-.bit.strip { border-radius: 2px; }
-.bit.streak { border-radius: 99px; background: linear-gradient(to top, var(--bit), transparent); }
-.bit.rocket { --bit: var(--accent); box-shadow: 0 0 8px 1px var(--accent); background: linear-gradient(to top, transparent, var(--accent) 70%, #fff); }
-
-.bit.ember {
-  border-radius: 50%;
-  box-shadow: 0 0 10px 3px var(--bit);
-  background: radial-gradient(circle, #fff 0 25%, var(--bit) 60%);
-}
-
-.bit.glitter {
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 6px 2px var(--bit);
-}
-
-.bit.spark {
-  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
-}
-
-.bit.star {
-  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
-}
-
-/* A mask rather than a path(), so hearts of any size stay round. */
-.bit.heart {
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 16'%3E%3Cpath d='M9 15.5S.5 10 .5 4.8C.5 2.2 2.6.5 4.9.5 6.7.5 8.2 1.6 9 3.1 9.8 1.6 11.3.5 13.1.5c2.3 0 4.4 1.7 4.4 4.3C17.5 10 9 15.5 9 15.5z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
-}
-
-.bit.bubble {
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.9) 0 7%, transparent 13%),
-    radial-gradient(circle at 68% 74%, rgba(255, 255, 255, 0.35) 0 4%, transparent 8%),
-    radial-gradient(circle, transparent 52%, color-mix(in oklch, var(--bit) 55%, transparent) 80%, var(--bit) 98%);
-}
-
-.bit.petal {
-  border-radius: 0 100% 0 100%;
-  background: linear-gradient(135deg, color-mix(in oklch, var(--bit) 60%, #fff), var(--bit));
+.burst > .burst-probe {
+  visibility: hidden;
 }
 
 .flash {

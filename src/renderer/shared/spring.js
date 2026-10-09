@@ -10,7 +10,8 @@ export const SPRINGS = {
   toggle: { stiffness: 600, damping: 34 },
 };
 
-const SAMPLE = 1 / 120;
+// 240 points a second, so springs stay smooth on high-refresh displays (up to 240Hz).
+const SAMPLE = 1 / 240;
 const STEP = 1 / 2000;
 const PRECISION = 0.001;
 const cache = new Map();

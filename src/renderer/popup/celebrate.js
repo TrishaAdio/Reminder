@@ -1,10 +1,13 @@
 // The reward for answering Done. The popup window covers the whole work area, so the
-// celebration uses all of it: six full-screen effects (confetti cannons, fireworks, hearts,
-// star shower, bubbles, blossom storm), dealt from a shuffled bag so all six come up before
-// any repeats. Every one also jumps the card, sends a shockwave and a flash out of the button
-// and pops a praise badge with today's tally. Answering Done several times in a row without
-// waiting builds a streak: more pieces and a slightly higher chime each time.
-// Transform and opacity only; every path is physics-sampled once into keyframes.
+// celebration uses all of it: eleven full-screen effects (confetti cannons, fireworks, hearts,
+// star shower, bubbles, blossom storm, balloons, butterflies, rainbow, sparkle swirl, paw
+// prints), dealt from a shuffled bag so all of them come up before any repeats. Every one also
+// jumps the card, sends a shockwave and a flash out of the button and pops a praise badge with
+// today's tally. Answering Done several times in a row without waiting builds a streak: more
+// pieces and a slightly higher chime each time.
+// Pieces are drawn by the canvas engine in particles.js, at the display's own refresh rate.
+
+import { begin, emit, custom, stamp, color, idle } from './particles.js';
 
 const HUES = [278, 240, 155, 52, 12, 82];
 const STORE = 'remindani.celebrate';
@@ -48,90 +51,6 @@ function add(className, style = {}) {
   Object.assign(el.style, style);
   stage().append(el);
   return el;
-}
-
-// ── Particles ─────────────────────────────────────────────────────────────────────────────
-
-// Width : height of each shape; `size` is the height in px. Sizes are real pixels (never
-// scaled above 1), so large pieces stay sharp.
-const ASPECT = { dot: 1, ember: 1, glitter: 1, strip: 0.42, spark: 1, star: 1, heart: 1.12, bubble: 1, petal: 0.72, streak: 0.18 };
-
-function fly(spec) {
-  const {
-    shape,
-    color,
-    x,
-    y,
-    angle = -90,
-    speed = 0,
-    gravity = 0,
-    drag = 0,
-    wind = 0,
-    life = 1200,
-    delay = 0,
-    size = 10,
-    spin = 0,
-    tumble = 0,
-    sway = 0,
-    swayRate = 3,
-    twinkle = 0,
-    grow = 0.12,
-    fadeFrom = 0.6,
-    pop = false,
-    align = false,
-  } = spec;
-  const w = size * (ASPECT[shape] ?? 1);
-  const el = add(`bit ${shape}`, { width: `${w}px`, height: `${size}px`, marginLeft: `${-w / 2}px`, marginTop: `${-size / 2}px` });
-  el.style.setProperty('--bit', color);
-
-  const steps = Math.max(16, Math.round(life / 33));
-  const dt = life / 1000 / steps;
-  const rad = (angle * Math.PI) / 180;
-  let vx = Math.cos(rad) * speed;
-  let vy = Math.sin(rad) * speed;
-  let px = 0;
-  let py = 0;
-  const phase = rand(0, Math.PI * 2);
-  const frames = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = i * dt;
-    const k = i / steps;
-    let s = k < grow ? 0.25 + (0.75 * k) / grow : 1;
-    let o = k < fadeFrom ? 1 : 1 - (k - fadeFrom) / (1 - fadeFrom);
-    if (twinkle) o *= 0.55 + 0.45 * Math.sin(t * twinkle + phase);
-    // Bubbles swell and vanish in the last few frames instead of fading.
-    if (pop && k > 0.9) {
-      s *= 1 + (k - 0.9) * 3;
-      o = Math.max(0, 1 - (k - 0.9) / 0.1);
-    }
-    // Turning over, but never thinner than a quarter, so a piece doesn't vanish edge-on.
-    const turn = tumble ? Math.cos(t * tumble + phase) : 1;
-    const flipX = Math.sign(turn || 1) * Math.max(0.25, Math.abs(turn));
-    const dx = sway ? Math.sin(t * swayRate + phase) * sway : 0;
-    const rot = align ? (Math.atan2(vy, vx) * 180) / Math.PI + 90 : spin * t;
-    frames.push({
-      transform: `translate(${x + px + dx}px, ${y + py}px) rotate(${rot}deg) scale(${s * flipX}, ${s})`,
-      opacity: Math.max(0, Math.min(1, o)),
-    });
-    vx += wind * dt - vx * drag * dt;
-    vy += gravity * dt - vy * drag * dt;
-    px += vx * dt;
-    py += vy * dt;
-  }
-  return settle(el.animate(frames, { duration: life, delay, easing: 'linear', fill: 'both' })).then(() => el.remove());
-}
-
-// A rocket: a bright streak rising on an ease-out path to where it bursts.
-function rocket(from, to, delay, duration) {
-  const el = add('bit streak rocket', { width: '4px', height: '26px', marginLeft: '-2px', marginTop: '-13px' });
-  const tilt = (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI + 90;
-  const frames = [
-    { transform: `translate(${from.x}px, ${from.y}px) rotate(${tilt}deg)`, opacity: 0 },
-    { transform: `translate(${from.x}px, ${from.y}px) rotate(${tilt}deg)`, opacity: 1, offset: 0.05 },
-    { transform: `translate(${to.x}px, ${to.y}px) rotate(${tilt}deg) scale(0.6)`, opacity: 1, offset: 0.97 },
-    { transform: `translate(${to.x}px, ${to.y}px) rotate(${tilt}deg) scale(0.2)`, opacity: 0 },
-  ];
-  return settle(el.animate(frames, { duration, delay, easing: 'cubic-bezier(0.15, 0.6, 0.3, 1)', fill: 'both' })).then(() => el.remove());
 }
 
 // ── Sound ─────────────────────────────────────────────────────────────────────────────────
@@ -269,45 +188,41 @@ const REACTIONS = {
   }),
 };
 
-// ── The six celebrations ──────────────────────────────────────────────────────────────────
-// Each gets the screen size, the button and card rects and an intensity (1 and up with the
-// streak), and returns its particles' promises. `chime` gets the synth.
+// ── The eleven celebrations ───────────────────────────────────────────────────────────────
+// Each gets the screen size, the button and card rects, an intensity (1 and up with the
+// streak) and `sfx`, which plays extra sounds at set times. Pieces go to the canvas engine.
 
 const EFFECTS = {
   // Two cannons fire confetti up from the bottom corners; it flutters down over everything.
   confetti: {
     reaction: 'hop',
     run({ W, H, more }) {
-      const out = [];
       for (const side of [-1, 1]) {
         const x = side < 0 ? -10 : W + 10;
-        out.push(
-          ...many(70 * more, () =>
-            fly({
-              shape: pick(['strip', 'strip', 'strip', 'dot', 'spark']),
-              color: Math.random() < 0.3 ? 'var(--accent)' : tint(pick(HUES)),
-              x,
-              y: H + 10,
-              // Tuned so pieces peak between about 45% and 85% of the screen height, then
-              // flutter down at drag-limited speed.
-              angle: side < 0 ? rand(-82, -50) : rand(-130, -98),
-              speed: rand(0.8, 1.35) * 2.2 * Math.max(700, H),
-              gravity: 850,
-              drag: 2.4,
-              life: rand(2300, 2900),
-              delay: rand(0, 120),
-              size: rand(12, 22),
-              spin: rand(-700, 700),
-              tumble: rand(5, 12),
-              sway: rand(8, 26),
-              swayRate: rand(2, 4),
-              grow: 0.04,
-              fadeFrom: 0.78,
-            }),
-          ),
+        many(80 * more, () =>
+          emit({
+            shape: pick(['strip', 'strip', 'strip', 'dot', 'spark']),
+            color: Math.random() < 0.3 ? 'var(--accent)' : tint(pick(HUES)),
+            x,
+            y: H + 10,
+            // Peaks between about 45% and 85% of the screen height, then flutters down at
+            // drag-limited speed.
+            angle: side < 0 ? rand(-82, -50) : rand(-130, -98),
+            speed: rand(0.8, 1.35) * 2.2 * Math.max(700, H),
+            gravity: 850,
+            drag: 2.4,
+            life: rand(2300, 2900),
+            delay: rand(0, 120),
+            size: rand(12, 22),
+            spin: rand(-700, 700),
+            tumble: rand(5, 12),
+            sway: rand(8, 26),
+            swayRate: rand(2, 4),
+            grow: 0.04,
+            fadeFrom: 0.78,
+          }),
         );
       }
-      return out;
     },
     chime({ tone, noise, bell }) {
       noise(0, { dur: 0.14, filter: 'highpass', freq: 900, level: 0.9 });
@@ -318,68 +233,80 @@ const EFFECTS = {
     },
   },
 
-  // Rockets rise from the bottom of the screen and burst into big glowing shells.
+  // Rockets climb on real ballistic arcs, trailing sparks, and burst into glowing shells.
   fireworks: {
     reaction: 'grow',
     run({ W, H, card, more }) {
-      const out = [];
       const shells = Math.round(4 + more * 1.5);
       for (let n = 0; n < shells; n++) {
         const to = { x: W * ((n + 0.5) / shells) + rand(-40, 40), y: rand(H * 0.12, Math.max(H * 0.18, card.y + card.height * 0.4)) };
-        const from = { x: to.x + rand(-60, 60), y: H + 20 };
-        const launch = n * 190 + rand(0, 60);
-        const climb = 620;
-        const burst = launch + climb;
-        out.push(rocket(from, to, launch, climb));
+        const from = { x: to.x + rand(-70, 70), y: H + 20 };
+        const g = 900;
+        const climb = Math.sqrt((2 * (from.y - to.y)) / g);
+        const vy = -g * climb;
+        const vx = (to.x - from.x) / climb;
+        const launch = n * 180 + rand(0, 60);
+        let trail = 0;
+        const fill = color('var(--accent)');
+        custom({
+          delay: launch,
+          life: climb * 1000,
+          render(_, t) {
+            const x = from.x + vx * t;
+            const y = from.y + vy * t + 0.5 * g * t * t;
+            const vNow = vy + g * t;
+            stamp('rocket', fill, 30, x, y, Math.atan2(vNow, vx) + Math.PI / 2, 1, 1 + Math.min(1.2, -vNow / 900), 1);
+            // Sparks fall off the rocket every 14ms, whatever the refresh rate.
+            while (trail <= t) {
+              trail += 0.014;
+              emit({ shape: 'glitter', color: 'var(--accent)', x: x + rand(-2, 2), y, angle: rand(60, 120), speed: rand(20, 70), gravity: 300, life: rand(300, 520), size: rand(3, 5), fadeFrom: 0.2 });
+            }
+          },
+        });
+        const burst = launch + climb * 1000;
         const hue = pick(HUES);
         const hue2 = pick(HUES);
-        const sparks = Math.round(38 * Math.min(1.5, more));
+        const sparks = Math.round(56 * Math.min(1.5, more));
         for (let i = 0; i < sparks; i++) {
-          const a = (360 / sparks) * i + rand(-4, 4);
-          out.push(
-            fly({
-              shape: i % 2 ? 'streak' : 'ember',
-              align: i % 2 === 1,
-              color: i % 5 === 0 ? 'var(--accent)' : tint(i % 3 ? hue : hue2),
-              x: to.x,
-              y: to.y,
-              angle: a,
-              speed: rand(380, 560),
-              gravity: 340,
-              drag: 2.4,
-              life: rand(1200, 1600),
-              delay: burst,
-              size: i % 2 ? rand(16, 26) : rand(7, 11),
-              grow: 0.03,
-              fadeFrom: 0.45,
-            }),
-          );
+          const streak = i % 2 === 1;
+          emit({
+            shape: streak ? 'streak' : 'ember',
+            blur: streak,
+            color: i % 5 === 0 ? 'var(--accent)' : tint(i % 3 ? hue : hue2),
+            x: to.x,
+            y: to.y,
+            angle: (360 / sparks) * i + rand(-4, 4),
+            speed: rand(380, 580),
+            gravity: 340,
+            drag: 2.4,
+            life: rand(1200, 1700),
+            delay: burst,
+            size: streak ? rand(12, 18) : rand(7, 11),
+            grow: 0.03,
+            fadeFrom: 0.45,
+          });
         }
-        // Glitter that hangs in the air and crackles after the shell.
-        out.push(
-          ...many(12, () =>
-            fly({
-              shape: 'glitter',
-              color: 'var(--accent)',
-              x: to.x + rand(-120, 120),
-              y: to.y + rand(-90, 110),
-              angle: 90,
-              speed: rand(10, 50),
-              gravity: 90,
-              life: rand(900, 1300),
-              delay: burst + rand(200, 500),
-              size: rand(4, 7),
-              twinkle: rand(25, 40),
-              fadeFrom: 0.3,
-            }),
-          ),
+        many(14, () =>
+          emit({
+            shape: 'glitter',
+            color: 'var(--accent)',
+            x: to.x + rand(-120, 120),
+            y: to.y + rand(-90, 110),
+            angle: 90,
+            speed: rand(10, 50),
+            gravity: 90,
+            life: rand(900, 1300),
+            delay: burst + rand(200, 500),
+            size: rand(4, 7),
+            twinkle: rand(25, 40),
+            fadeFrom: 0.3,
+          }),
         );
       }
-      return out;
     },
     chime({ tone, noise, bell }) {
       for (let n = 0; n < 5; n++) {
-        const launch = n * 0.19;
+        const launch = n * 0.18;
         const burst = launch + 0.62;
         tone(700, launch, { dur: 0.62, glide: 2100, level: 0.08, tuned: false, attack: 0.05 });
         noise(burst, { dur: 1.1, filter: 'lowpass', freq: 520, sweep: 120, level: 1 });
@@ -395,9 +322,9 @@ const EFFECTS = {
     reaction: 'wiggle',
     run({ card, more }) {
       const c = { x: card.x + card.width / 2, y: card.y + card.height / 2 };
-      const n = 40 * more;
-      return many(n, (i) =>
-        fly({
+      const n = Math.round(44 * more);
+      many(n, (i) =>
+        emit({
           shape: 'heart',
           color: i % 4 === 0 ? 'var(--accent)' : tint(pick([12, 12, 350, 330, 278])),
           x: c.x + rand(-60, 60),
@@ -409,6 +336,7 @@ const EFFECTS = {
           life: rand(1800, 2400),
           delay: rand(0, 160),
           size: rand(18, 48),
+          tilt: true,
           sway: rand(10, 30),
           swayRate: rand(3, 6),
           grow: 0.1,
@@ -427,9 +355,9 @@ const EFFECTS = {
   // Gold stars rain down over the whole screen, spinning and twinkling.
   stars: {
     reaction: 'bounce',
-    run({ W, H, card, more }) {
-      const shower = many(80 * more, (i) =>
-        fly({
+    run({ W, card, more }) {
+      many(90 * more, (i) =>
+        emit({
           shape: i % 5 ? 'star' : 'spark',
           color: i % 2 ? 'var(--accent)' : tint(pick([82, 52, 240, 278])),
           x: rand(0, W),
@@ -446,9 +374,8 @@ const EFFECTS = {
           fadeFrom: 0.75,
         }),
       );
-      // A few big sparkles flash right around the card.
-      const flashes = many(10, () =>
-        fly({
+      many(12, () =>
+        emit({
           shape: 'spark',
           color: 'var(--accent)',
           x: card.x + rand(0, card.width),
@@ -461,7 +388,6 @@ const EFFECTS = {
           fadeFrom: 0.35,
         }),
       );
-      return [...shower, ...flashes];
     },
     chime({ bell, tone }) {
       [1567.98, 1760, 2093, 2349.32, 2637.02, 3135.96].forEach((f, i) => bell(f, i * 0.06, 0.8, 0.55));
@@ -474,8 +400,8 @@ const EFFECTS = {
   bubbles: {
     reaction: 'sway',
     run({ W, H, card, more }) {
-      const rising = many(55 * more, () =>
-        fly({
+      many(60 * more, () =>
+        emit({
           shape: 'bubble',
           color: tint(pick([240, 240, 200, 155, 278])),
           x: rand(0, W),
@@ -494,8 +420,8 @@ const EFFECTS = {
           pop: true,
         }),
       );
-      const fromCard = many(16, () =>
-        fly({
+      many(16, () =>
+        emit({
           shape: 'bubble',
           color: tint(pick([240, 200])),
           x: card.x + rand(0.1, 0.9) * card.width,
@@ -514,7 +440,6 @@ const EFFECTS = {
           pop: true,
         }),
       );
-      return [...rising, ...fromCard];
     },
     chime({ tone }) {
       for (let i = 0; i < 16; i++) {
@@ -528,9 +453,9 @@ const EFFECTS = {
   // A gust of blossom petals blows across the whole screen.
   petals: {
     reaction: 'spinHop',
-    run({ W, H, more }) {
-      return many(110 * more, () =>
-        fly({
+    run({ H, more }) {
+      many(120 * more, () =>
+        emit({
           shape: 'petal',
           color: Math.random() < 0.18 ? 'oklch(0.96 0.02 350)' : tint(pick([350, 12, 12, 330])),
           x: rand(-120, -10),
@@ -557,6 +482,231 @@ const EFFECTS = {
       [587.33, 659.25, 783.99, 880, 987.77, 1174.66, 1318.51, 1567.98].forEach((f, i) => {
         tone(f, 0.05 + i * 0.05, { dur: 1.1, type: 'triangle', level: 0.55, attack: 0.003 });
       });
+    },
+  },
+
+  // Balloons rise from the bottom on wiggling strings; some pop into confetti near the top.
+  balloons: {
+    reaction: 'hop',
+    run({ W, H, more, sfx }) {
+      const n = Math.round(18 * more);
+      const pops = [];
+      for (let i = 0; i < n; i++) {
+        const size = rand(46, 74);
+        const x0 = W * ((i + 0.5) / n) + rand(-30, 30);
+        const y0 = H + size + rand(0, 120);
+        const rise = rand(300, 430);
+        const delay = rand(0, 700);
+        const sway = rand(10, 24);
+        const swayRate = rand(1.4, 2.4);
+        const phase = rand(0, Math.PI * 2);
+        const popsAt = i % 3 === 0 ? rand(1.4, 2.2) : null;
+        const life = (popsAt ?? (y0 + size * 2) / rise) * 1000;
+        const fill = color(tint(pick(HUES)));
+        const string = color('var(--text-2)');
+        if (popsAt) pops.push(delay / 1000 + popsAt);
+        custom({
+          delay,
+          life,
+          render(g, t, k) {
+            const x = x0 + Math.sin(t * swayRate + phase) * sway;
+            const y = y0 - rise * t - 40 * t * t;
+            const tilt = Math.cos(t * swayRate + phase) * 0.12;
+            // The string trails below, curling as the balloon sways.
+            g.globalAlpha = 0.7;
+            g.strokeStyle = string;
+            g.lineWidth = 1.2;
+            g.beginPath();
+            g.moveTo(x, y + size * 0.5);
+            for (let s = 1; s <= 6; s++) {
+              const sy = y + size * 0.5 + s * size * 0.16;
+              g.lineTo(x + Math.sin(t * 6 + s * 0.9 + phase) * 4 * (s / 6) - tilt * s * 6, sy);
+            }
+            g.stroke();
+            stamp('balloon', fill, size, x, y, tilt, 1, 1, Math.min(1, t * 6));
+            if (popsAt && k >= 1) {
+              many(16, () => emit({ shape: pick(['strip', 'dot', 'spark']), color: fill, x, y, angle: rand(0, 360), speed: rand(180, 420), gravity: 700, drag: 2, life: rand(600, 900), size: rand(7, 12), spin: rand(-600, 600), tumble: rand(6, 12), fadeFrom: 0.5 }));
+            }
+          },
+        });
+      }
+      sfx(({ noise, tone, bell }) => {
+        for (const at of pops) {
+          noise(at, { dur: 0.06, filter: 'highpass', freq: 1800, level: 0.9 });
+          tone(170, at, { dur: 0.12, glide: 60, level: 0.5, tuned: false });
+          bell(rand(1046, 1568), at + 0.02, 0.5, 0.25);
+        }
+      });
+    },
+    chime({ tone, bell }) {
+      tone(420, 0, { dur: 0.22, glide: 700, type: 'triangle', level: 0.35 });
+      tone(500, 0.12, { dur: 0.22, glide: 820, type: 'triangle', level: 0.3 });
+      [659.25, 783.99, 1046.5].forEach((f, i) => bell(f, 0.2 + i * 0.08, 1, 0.6));
+    },
+  },
+
+  // Butterflies flutter out of the card's edges and drift up and away.
+  butterflies: {
+    reaction: 'sway',
+    run({ card, more }) {
+      const n = Math.round(22 * more);
+      many(n, (i) => {
+        const left = i % 2 === 0;
+        return emit({
+          shape: 'butterfly',
+          color: Math.random() < 0.25 ? 'var(--accent)' : tint(pick([278, 240, 330, 52, 155])),
+          x: left ? card.x + rand(0, 40) : card.x + card.width - rand(0, 40),
+          y: card.y + rand(10, card.height - 10),
+          angle: left ? rand(-160, -110) : rand(-70, -20),
+          speed: rand(260, 460),
+          gravity: -70,
+          wind: left ? -30 : 30,
+          drag: 0.9,
+          life: rand(2000, 2700),
+          delay: rand(0, 500),
+          size: rand(24, 40),
+          flap: rand(7, 10),
+          tilt: true,
+          sway: rand(14, 30),
+          swayRate: rand(2.5, 4),
+          grow: 0.08,
+          fadeFrom: 0.75,
+        });
+      });
+    },
+    chime({ tone, noise }) {
+      for (let i = 0; i < 18; i++) noise(i * 0.035, { dur: 0.03, filter: 'bandpass', freq: 2600, q: 2, level: 0.18 });
+      [1174.66, 1318.51, 1567.98, 1760, 2093].forEach((f, i) => tone(f, 0.1 + i * 0.11, { dur: 0.7, type: 'triangle', level: 0.4 }));
+    },
+  },
+
+  // A rainbow sweeps over the card from cloud to cloud, scattering sparkles as it goes.
+  rainbow: {
+    reaction: 'grow',
+    run({ card }) {
+      const cx = card.x + card.width / 2;
+      const cy = card.y + card.height * 0.8;
+      const bands = [20, 55, 95, 150, 230, 285].map((h) => color(`oklch(0.8 0.14 ${h})`));
+      const band = 14;
+      // Wide enough to clear the card's sides, low enough to stay on screen.
+      const R0 = Math.min(card.width * 0.54, cy - 60 - bands.length * band);
+      const outer = R0 + bands.length * band;
+      const cloud = color('oklch(0.98 0.01 250)');
+      let sparkle = 0;
+      custom({
+        life: 2300,
+        render(g, t) {
+          const sweep = 1 - (1 - Math.min(1, t / 0.75)) ** 3;
+          const fade = t < 1.7 ? 1 : Math.max(0, 1 - (t - 1.7) / 0.6);
+          g.lineCap = 'round';
+          bands.forEach((c, i) => {
+            g.globalAlpha = 0.85 * fade;
+            g.strokeStyle = c;
+            g.lineWidth = band + 0.6;
+            g.beginPath();
+            g.arc(cx, cy, outer - band * (i + 0.5), Math.PI, Math.PI + Math.PI * sweep);
+            g.stroke();
+          });
+          // Sparkles fall off the leading edge every 10ms.
+          const a = Math.PI + Math.PI * sweep;
+          while (sweep < 1 && sparkle <= t) {
+            sparkle += 0.01;
+            const r = rand(R0, outer);
+            emit({ shape: pick(['glitter', 'spark']), color: pick(['var(--accent)', 'oklch(0.9 0.1 95)', 'oklch(0.85 0.1 230)']), x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, angle: rand(30, 150), speed: rand(30, 120), gravity: 200, life: rand(500, 900), size: rand(5, 12), spin: rand(-200, 200), fadeFrom: 0.3 });
+          }
+          // Puffy clouds at both feet, the right one arriving with the rainbow.
+          for (const [side, at] of [[-1, 0], [1, 0.62]]) {
+            const u = Math.max(0, t - at) / 0.35;
+            if (u <= 0) continue;
+            const s = u < 1 ? 1 + Math.sin(u * Math.PI) * 0.25 : 1;
+            stamp('cloud', cloud, 46, cx + side * (outer - (bands.length * band) / 2), cy + 8, 0, s * Math.min(1, u * 2), s * Math.min(1, u * 2), fade);
+          }
+        },
+      });
+    },
+    chime({ bell, tone }) {
+      [523.25, 587.33, 659.25, 698.46, 783.99, 880, 987.77, 1046.5].forEach((f, i) => bell(f, i * 0.09, 0.9, 0.5));
+      [1046.5, 1318.51, 1567.98].forEach((f) => tone(f, 0.75, { dur: 1.4, level: 0.18, attack: 0.05 }));
+    },
+  },
+
+  // A galaxy of sparkles spins out of the card and spirals away.
+  swirl: {
+    reaction: 'wiggle',
+    run({ card, more }) {
+      const cx = card.x + card.width / 2;
+      const cy = card.y + card.height / 2;
+      const n = Math.round(150 * more);
+      const stars = many(n, (i) => ({
+        a0: (i / n) * Math.PI * 2 * 3 + rand(-0.2, 0.2),
+        r0: rand(10, 40),
+        reach: rand(220, 520),
+        spin: rand(2.6, 4.2),
+        size: rand(5, 13),
+        shape: pick(['glitter', 'ember', 'spark', 'spark']),
+        fill: color(i % 4 === 0 ? 'var(--accent)' : tint(pick([278, 240, 330, 200]))),
+        delay: rand(0, 0.25),
+        twinkle: rand(10, 24),
+      }));
+      custom({
+        life: 2200,
+        render(_, t) {
+          for (const s of stars) {
+            const u = t - s.delay;
+            if (u <= 0) continue;
+            const out = 1 - Math.exp(-u * 1.9);
+            const r = s.r0 + s.reach * out;
+            const a = s.a0 + s.spin * (1 - Math.exp(-u * 1.5)) + u * 0.5;
+            const x = cx + Math.cos(a) * r;
+            const y = cy + Math.sin(a) * r * 0.55;
+            const k = u / 2;
+            const o = (k < 0.08 ? k / 0.08 : k > 0.6 ? Math.max(0, 1 - (k - 0.6) / 0.4) : 1) * (0.6 + 0.4 * Math.sin(u * s.twinkle));
+            // Stretched along the orbit while it is still fast.
+            const speed = s.spin * 1.5 * Math.exp(-u * 1.5) * r;
+            stamp(s.shape, s.fill, s.size, x, y, a + Math.PI, 1, s.shape === 'spark' ? 1 : 1 + Math.min(1.8, speed / 400), o);
+          }
+        },
+      });
+    },
+    chime({ tone, noise, bell }) {
+      noise(0, { dur: 1.2, filter: 'bandpass', freq: 300, sweep: 3200, q: 1.2, level: 0.4, attack: 0.25 });
+      [523.25, 659.25, 783.99].forEach((f) => tone(f, 0, { dur: 1.8, level: 0.22, attack: 0.25 }));
+      for (let i = 0; i < 8; i++) bell(rand(1568, 3136), 0.2 + i * 0.11, 0.5, 0.3);
+    },
+  },
+
+  // A kitten walks across the screen, leaving paw prints, with a heart now and then.
+  paws: {
+    reaction: 'bounce',
+    run({ W, H, card, more, sfx }) {
+      const below = card.y + card.height + 110;
+      const y0 = below < H - 40 ? below : Math.max(60, card.y - 90);
+      const fill = 'var(--accent)';
+      const step = 64;
+      const steps = Math.ceil((W + 80) / step);
+      const pace = Math.max(55, 1700 / steps);
+      const taps = [];
+      for (let i = 0; i < steps; i++) {
+        const x = -40 + i * step;
+        const wave = Math.sin(x / 260) * 46;
+        const dir = Math.atan2(Math.cos(x / 260) * 46 / 260, 1);
+        const side = i % 2 ? 1 : -1;
+        const nx = -Math.sin(dir) * side * 15;
+        const ny = Math.cos(dir) * side * 15;
+        const delay = i * pace;
+        taps.push(delay / 1000);
+        emit({ shape: 'paw', color: fill, x: x + nx, y: y0 + wave + ny, speed: 0, life: 1500, delay, size: 26, rot: (dir * 180) / Math.PI + 90, grow: 0.08, fadeFrom: 0.55 });
+        if (i % 4 === 2) {
+          many(Math.round(3 * more), () =>
+            emit({ shape: 'heart', color: tint(pick([12, 350, 330])), x: x + nx, y: y0 + wave + ny - 10, angle: rand(-120, -60), speed: rand(90, 180), gravity: -60, drag: 1.4, life: rand(900, 1200), delay: delay + 80, size: rand(12, 20), sway: rand(4, 10), grow: 0.15, fadeFrom: 0.5 }),
+          );
+        }
+      }
+      sfx(({ tone }) => taps.forEach((at, i) => tone(i % 2 ? 1046.5 : 880, at, { dur: 0.09, glide: (i % 2 ? 1046.5 : 880) * 0.75, level: 0.3 })));
+    },
+    chime({ bell }) {
+      bell(783.99, 0, 0.6, 0.4);
+      bell(1046.5, 0.1, 0.8, 0.4);
     },
   },
 };
@@ -725,9 +875,9 @@ export function celebrate({ button, card, buddy, calm, volume, counts, check, ne
 
   let reacted = Promise.resolve();
   if (!calm) {
-    const W = window.innerWidth;
-    const H = window.innerHeight;
-    parts.push(flash(btn), shockwave(box, 36, { delay: 60, grow: 70, width: 4, duration: 800 }), ...effect.run({ W, H, btn, card: box, more }));
+    const { W, H } = begin(stage());
+    effect.run({ W, H, btn, card: box, more, sfx: (play) => sound(volume, pitch, play) });
+    parts.push(flash(btn), shockwave(box, 36, { delay: 60, grow: 70, width: 4, duration: 800 }), idle());
     const jump = card.animate(
       [
         { transform: 'none' },
