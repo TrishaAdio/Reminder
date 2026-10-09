@@ -1,6 +1,7 @@
 // Used by .github/workflows/update-test.yml: opens the installed app with a debugging port and
 // clicks through the update the way a person would.
 import { spawn } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import { chromium } from 'playwright-core';
 
 const exe = `${process.env.LOCALAPPDATA}\\Programs\\RemindAni\\RemindAni.exe`;
@@ -33,6 +34,7 @@ console.log('state:', await text(title));
 await main.click('.update button:has-text("Download")');
 for (let i = 0; i < 120 && !/Ready/.test((await text(title)) ?? ''); i++) await sleep(1000);
 console.log('state:', await text(title), '|', await text('.update-line:not(.leaving) .update-detail'));
+writeFileSync('clicked-at.txt', new Date().toISOString());
 await main.click('.update button:has-text("Restart and update")');
 console.log('clicked Restart and update');
 const exited = await Promise.race([new Promise((r) => app.once('exit', () => r(true))), sleep(30000).then(() => false)]);

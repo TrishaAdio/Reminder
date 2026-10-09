@@ -1,13 +1,13 @@
 name: Update test
 
-# Real-Windows check of the in-app updater: installs an old release, opens it, clicks
+# Real-Windows check of the in-app updater: installs old releases, opens the app, clicks
 # Settings › Check for updates › Download › Restart and update like a person would, then
-# reports which version is installed and whether the app came back.
+# records how long the app is gone, what is installed, and a screenshot of the desktop.
 on:
   workflow_dispatch:
     inputs:
-      from:
-        description: Release to install first (tag)
+      install:
+        description: Releases to install first, in order (space separated tags)
         required: true
         default: v1.1.0
 
@@ -24,38 +24,56 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install the old release
+      - name: Install the old releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download "${{ inputs.from }}" --pattern "RemindAni-Setup-*.exe" --dir old
-          $setup = Get-ChildItem old\*.exe | Select-Object -First 1
-          Start-Process $setup.FullName -ArgumentList '/S' -Wait
-          $exe = "$env:LOCALAPPDATA\Programs\RemindAni\RemindAni.exe"
-          "Installed: $((Get-Item $exe).VersionInfo.ProductVersion)"
+          foreach ($tag in "${{ inputs.install }}".Split(' ', [StringSplitOptions]::RemoveEmptyEntries)) {
+            gh release download $tag --pattern "RemindAni-Setup-*.exe" --dir "old\$tag"
+            $setup = Get-ChildItem "old\$tag\*.exe" | Select-Object -First 1
+            Start-Process $setup.FullName -ArgumentList '/S' -Wait
+            Get-Process RemindAni -ErrorAction SilentlyContinue | Stop-Process -Force
+            Start-Sleep 2
+            "Installed $tag -> $((Get-Item "$env:LOCALAPPDATA\Programs\RemindAni\RemindAni.exe").VersionInfo.ProductVersion)"
+          }
 
       - name: Click through the update like a user
         run: |
           npm install --no-save --no-audit --no-fund playwright-core@1.64.0 | Out-Null
           node .github/scripts/click-update.mjs
 
-      - name: What happened after Restart and update
+      - name: Wait for the app to come back
         if: always()
         run: |
-          $exe = "$env:LOCALAPPDATA\Programs\RemindAni\RemindAni.exe"
-          foreach ($i in 1..30) {
-            $p = Get-Process RemindAni -ErrorAction SilentlyContinue | Where-Object MainWindowHandle -ne 0
-            if ($p) { break }
-            Start-Sleep 3
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("shots\$name.png")
           }
+          New-Item -ItemType Directory shots | Out-Null
+          $clicked = [datetime]::Parse((Get-Content clicked-at.txt))
+          $back = $null
+          foreach ($i in 1..120) {
+            $p = Get-Process RemindAni -ErrorAction SilentlyContinue | Where-Object MainWindowTitle -eq 'RemindAni'
+            if ($p) { $back = Get-Date; break }
+            if ($i -in 5, 15, 30) { Shot "during-$i" }
+            Start-Sleep 1
+          }
+          if ($back) { "App window back after $([int]($back - $clicked).TotalSeconds) s" } else { "App window NOT back after 120 s" }
+          Start-Sleep 4
+          Shot 'after'
+          $exe = "$env:LOCALAPPDATA\Programs\RemindAni\RemindAni.exe"
           "Installed exe version: $((Get-Item $exe -ErrorAction SilentlyContinue).VersionInfo.ProductVersion)"
           Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
-            Where-Object DisplayName -like 'RemindAni*' | Select-Object DisplayName, DisplayVersion, InstallLocation | Format-List
-          "RemindAni processes:"
-          Get-Process RemindAni -ErrorAction SilentlyContinue | Select-Object Id, StartTime, MainWindowTitle, Path | Format-Table -AutoSize
-          "Installer still running:"
-          Get-Process | Where-Object { $_.Path -like '*remindani-updater*' -or $_.ProcessName -like '*Setup*' } | Select-Object Id, ProcessName, Path | Format-Table -AutoSize
-          "Updater cache:"
-          Get-ChildItem "$env:LOCALAPPDATA\remindani-updater" -Recurse -ErrorAction SilentlyContinue | Select-Object FullName, Length | Format-Table -AutoSize
+            Where-Object DisplayName -like 'RemindAni*' | Select-Object DisplayName, DisplayVersion | Format-List
+          Get-Process RemindAni -ErrorAction SilentlyContinue | Select-Object Id, StartTime, MainWindowTitle | Format-Table -AutoSize
           "Updater log:"
           Get-Content "$env:APPDATA\RemindAni\logs\updater.log" -ErrorAction SilentlyContinue
+
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: screens
+          path: shots
