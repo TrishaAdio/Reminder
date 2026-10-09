@@ -303,6 +303,15 @@ body {
   box-shadow: inset 0 0 0 1px var(--glass-edge), inset 0 1px 0 var(--glass-rim);
 }
 
+/* The see-through card would show the picture's cut-off lower edge as a hard shape. The
+   28px tucked behind the card fades out, so under the frosted glass only a soft glow is
+   left; above the card's edge the picture stays sharp, easing off over its last 12px. */
+.glass .buddy-img {
+  --fade: linear-gradient(to bottom, #000 calc(100% - 40px), rgba(0, 0, 0, 0.8) calc(100% - 28px), rgba(0, 0, 0, 0.18) calc(100% - 14px), transparent 100%);
+  -webkit-mask-image: var(--fade);
+  mask-image: var(--fade);
+}
+
 .glass .peek {
   background: var(--glass-fill);
   -webkit-backdrop-filter: blur(18px) saturate(1.6);
