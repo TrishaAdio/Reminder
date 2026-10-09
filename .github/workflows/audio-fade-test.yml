@@ -1,0 +1,28 @@
+name: Audio fade test
+
+# Real-Windows check of RemindAni-Audio.exe (other apps' sound fading around reminders):
+# builds it with Windows' own C# compiler, installs a virtual sound card, plays a looping
+# sound in another process and checks fade down, fade up, crash recovery and quit.
+on:
+  workflow_dispatch:
+  push:
+    paths: ['build/audio/**', 'scripts/build-audio-helper.mjs', '.github/scripts/audio-fade-test.mjs', '.github/workflows/audio-fade-test.yml']
+
+jobs:
+  fade:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Build the helper
+        run: node scripts/build-audio-helper.mjs
+
+      - name: Virtual sound card
+        uses: LABSN/sound-ci-helpers@v1
+
+      - name: Fade another app's sound
+        run: node .github/scripts/audio-fade-test.mjs
