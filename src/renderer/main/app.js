@@ -10,6 +10,7 @@ import { listView } from './views/list.js';
 import { galleryView } from './views/gallery.js';
 import { editorView } from './views/editor.js';
 import { settingsView } from './views/settings.js';
+import { onboardingView } from './views/onboarding.js';
 
 installSpringProperties();
 
@@ -33,7 +34,12 @@ const TABS = [
   { id: 'settings', label: 'Settings' },
 ];
 
-let route = { tab: state.reminders.length ? 'today' : 'reminders', page: state.reminders.length ? null : { kind: 'gallery' } };
+// First run (and anyone who hasn't seen setup yet) starts with the welcome steps.
+const SETUP = { tab: 'today', page: { kind: 'setup' } };
+const inSetup = () => route.page?.kind === 'setup';
+let route = !state.settings.onboarded
+  ? SETUP
+  : { tab: state.reminders.length ? 'today' : 'reminders', page: state.reminders.length ? null : { kind: 'gallery' } };
 let view = null;
 let highlight = null;
 
@@ -121,6 +127,7 @@ const actions = {
   },
   test: (id) => api.testReminder(id),
   setEnabled: (id, on) => api.updateReminder(id, { enabled: on }),
+  setup: () => go(SETUP),
   sample: () => {
     const first = state.reminders.find((r) => r.enabled) ?? state.reminders[0];
     if (first) api.testReminder(first.id);
@@ -129,6 +136,7 @@ const actions = {
 
 function build() {
   const p = route.page;
+  if (p?.kind === 'setup') return onboardingView({ api, state, fmt, done: () => go({ tab: 'today', page: null }) });
   if (p?.kind === 'gallery') return galleryView({ state, fmt, back: backButton(), actions });
   if (p?.kind === 'editor') return editorView({ api, id: p.id, state, fmt, player, back: backButton(), actions, autofocus: p.autofocus });
   if (route.tab === 'today') return todayView({ api, state, fmt, go });
@@ -146,6 +154,8 @@ function paintTabs() {
     b.tabIndex = i === j ? 0 : -1;
   });
   page.setAttribute('aria-labelledby', `tab-${route.tab}`);
+  // During setup the tabs step aside; the title bar keeps the name and stays draggable.
+  tabs.hidden = inSetup();
   const u = state.update.status;
   badge.hidden = !['available', 'downloading', 'ready'].includes(u);
   tabButtons[2].setAttribute('aria-label', badge.hidden ? 'Settings' : 'Settings, update available');
@@ -204,7 +214,9 @@ api.onUpdateState((u) => {
   paintTabs();
 });
 
-api.onNavigate((to) => go({ tab: to.tab, page: null }, { section: to.section }));
+api.onNavigate((to) => {
+  if (!inSetup()) go({ tab: to.tab, page: null }, { section: to.section });
+});
 
 // Countdowns: the hero every second, everything else every 15 seconds.
 setInterval(() => view.tick?.(Date.now()), 1000);
@@ -212,6 +224,8 @@ setInterval(() => view.slowTick?.(Date.now()), 15_000);
 
 document.addEventListener('keydown', (e) => {
   const key = e.key.toLowerCase();
+  // Setup has its own buttons; only closing the window still works.
+  if (inSetup() && !(e.ctrlKey && key === 'w')) return;
   if (e.ctrlKey && key === 'n') {
     e.preventDefault();
     go({ tab: 'reminders', page: { kind: 'gallery' } });

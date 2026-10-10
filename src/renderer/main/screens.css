@@ -143,21 +143,103 @@
   pointer-events: none;
 }
 
-.hero-buddy-img {
+.hero-buddy:focus-visible {
+  outline-offset: -2px;
+  border-radius: 16px;
+}
+
+/* ── Live picture (live-picture.js) ── */
+
+.live-figure {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 100%;
+}
+
+.live-img {
   position: relative;
   display: block;
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
   object-position: bottom center;
-  transform-origin: 50% 100%;
   filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.18));
   -webkit-user-drag: none;
 }
 
-.hero-buddy:focus-visible {
-  outline-offset: -2px;
-  border-radius: 16px;
+/* While WebGL draws the living picture, the image only holds the layout. */
+.live-figure.live .live-img {
+  visibility: hidden;
+}
+
+.live-canvas {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+}
+
+.live-figure.live .live-canvas {
+  display: block;
+}
+
+/* Sparkles drift up behind the picture, in the reminder's tint. */
+.live-sparkles {
+  position: absolute;
+  left: var(--img-left, 0);
+  top: var(--img-top, 0);
+  width: var(--img-width, 100%);
+  bottom: 0;
+  pointer-events: none;
+}
+
+.live-sparkles i {
+  position: absolute;
+  bottom: 18%;
+  left: calc(4% + var(--i) * 17%);
+  width: 8px;
+  height: 8px;
+  background: oklch(var(--ink-l) var(--ink-c) var(--hue, 240));
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  opacity: 0;
+}
+
+.live-sparkles i:nth-child(odd) {
+  width: 6px;
+  height: 6px;
+  background: #fff;
+}
+
+/* A speech bubble by her head, pointing at her. */
+.live-bubble {
+  position: absolute;
+  z-index: 2;
+  right: calc(100% - var(--img-left, 0px) - var(--img-width, 100%) * 0.3);
+  top: calc(var(--img-top, 0px) - 6px);
+  width: max-content;
+  max-width: 200px;
+  padding: 7px 12px;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--card);
+  box-shadow: var(--highlight), var(--shadow-lift), inset 0 0 0 1px var(--separator);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: left;
+  white-space: normal;
+  transform-origin: 100% 100%;
+  pointer-events: none;
+}
+
+.glass .live-bubble {
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-depth), var(--shadow-lift);
 }
 
 .ring {
@@ -508,6 +590,445 @@
   .stat {
     padding: var(--s3) var(--s4);
   }
+}
+
+/* The person's name, in a script face with a slow shimmer: on Today and during setup. */
+.today-name {
+  --cl: 0.6;
+  display: inline-block;
+  padding: 0 0.14em 0.06em 0.02em;
+  font-family: 'Dancing Script', var(--font);
+  font-size: 1.38em;
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: 0;
+  background: linear-gradient(90deg, oklch(var(--cl) 0.2 350), oklch(var(--cl) 0.17 35), oklch(var(--cl) 0.2 305), oklch(var(--cl) 0.16 250), oklch(var(--cl) 0.2 350)) 0 0 / 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  .today-name { --cl: 0.8; }
+}
+
+/* ── First-time setup ───────────────────────────────── */
+
+.view.setup {
+  max-width: 900px;
+  margin: auto;
+  padding: var(--s6) 0;
+}
+
+.setup-grid {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 56px;
+  align-items: center;
+}
+
+/* She stands on a soft glowing disc. */
+.setup-stage {
+  position: relative;
+  height: 400px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.setup-stage::before {
+  content: '';
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  bottom: 6%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 30%, oklch(0.75 0.15 350 / 0.45), transparent 60%),
+    radial-gradient(circle at 70% 65%, oklch(0.72 0.14 250 / 0.45), transparent 60%),
+    var(--fill);
+  filter: blur(2px);
+}
+
+.setup-stage::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: -6px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.28), transparent);
+}
+
+.setup-figure {
+  z-index: 1;
+}
+
+.setup-figure .live-bubble {
+  right: auto;
+  left: calc(var(--img-left, 0px) - 8px);
+  top: calc(var(--img-top, 0px) - 52px);
+  max-width: 260px;
+  border-radius: 14px 14px 14px 4px;
+  transform-origin: 0 100%;
+}
+
+.setup-app-mark {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 168px;
+  height: 168px;
+  margin-bottom: 96px;
+  border-radius: 40px;
+  box-shadow: var(--shadow-lift);
+}
+
+.setup-dots {
+  display: flex;
+  gap: 6px;
+  margin-bottom: var(--s6);
+}
+
+.setup-dot {
+  width: 20px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--fill-press);
+  transition: width var(--layout-duration) var(--layout-easing), background var(--exit-duration) var(--exit-easing);
+}
+
+.setup-dot.on {
+  width: 32px;
+  background: var(--accent);
+}
+
+.setup-body {
+  position: relative;
+  min-height: 380px;
+}
+
+.setup-step {
+  position: relative;
+}
+
+.setup-step.leaving {
+  position: absolute;
+  inset: 0 0 auto 0;
+}
+
+.setup-eyebrow {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.setup-title {
+  margin-top: var(--s2);
+  font-size: 34px;
+  line-height: 42px;
+  font-weight: 700;
+  letter-spacing: -0.024em;
+  text-wrap: balance;
+}
+
+.setup-sub {
+  max-width: 460px;
+  margin-top: var(--s3);
+  color: var(--text-2);
+}
+
+.setup-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s7);
+}
+
+.setup-next {
+  height: 40px;
+  padding: 0 20px;
+  font-size: 14px;
+}
+
+.setup-field {
+  display: block;
+  max-width: 440px;
+  margin-top: var(--s6);
+}
+
+.setup-input,
+.text-box {
+  border: 0;
+  user-select: text;
+  outline: none;
+}
+
+.setup-input {
+  width: 100%;
+  height: 54px;
+  padding: 0 18px;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--highlight), var(--shadow), inset 0 0 0 1px var(--separator);
+  font-size: 20px;
+  font-weight: 500;
+  transition: box-shadow var(--exit-duration) var(--exit-easing);
+}
+
+.setup-input:focus {
+  box-shadow: var(--highlight), var(--shadow), inset 0 0 0 2px var(--accent);
+}
+
+.setup-input::placeholder,
+.text-box::placeholder {
+  color: var(--text-3);
+}
+
+.setup-preview-box {
+  max-width: 440px;
+  min-height: 92px;
+  margin-top: var(--s4);
+  padding: var(--s4) var(--s5);
+  border-radius: 18px;
+  background: var(--fill);
+}
+
+.setup-preview-label {
+  color: var(--text-2);
+}
+
+.setup-preview {
+  margin-top: var(--s1);
+}
+
+.setup-looks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s3);
+  max-width: 480px;
+  margin-top: var(--s6);
+}
+
+.setup-look,
+.setup-chip {
+  position: relative;
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: var(--highlight), var(--shadow), inset 0 0 0 1px var(--separator);
+  text-align: left;
+  transition: box-shadow var(--exit-duration) var(--exit-easing), transform var(--release-duration) var(--release-easing);
+}
+
+.setup-look {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--s3) var(--s3) var(--s4);
+}
+
+.setup-look[aria-checked='true'] {
+  box-shadow: var(--highlight), var(--shadow-lift), inset 0 0 0 2px var(--accent);
+}
+
+.setup-look-art {
+  position: relative;
+  width: 100%;
+  height: 96px;
+  margin-bottom: var(--s3);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.setup-look[data-look='classic'] .setup-look-art { background: #ebe7e0; }
+.setup-look[data-look='classic'] .art-card { background: #fff; box-shadow: 0 2px 6px rgba(40, 28, 14, 0.12); }
+.setup-look[data-look='classic'] .art-bar { background: #a84f0a; }
+
+.setup-look[data-look='glass'] .setup-look-art {
+  background:
+    radial-gradient(circle at 18% 30%, oklch(0.7 0.18 255) 0 14%, transparent 34%),
+    radial-gradient(circle at 80% 24%, oklch(0.72 0.18 350) 0 14%, transparent 36%),
+    radial-gradient(circle at 60% 90%, oklch(0.8 0.15 75) 0 14%, transparent 36%),
+    #20202a;
+}
+.setup-look[data-look='glass'] .art-card {
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  -webkit-backdrop-filter: blur(10px) saturate(1.8);
+  backdrop-filter: blur(10px) saturate(1.8);
+}
+.setup-look[data-look='glass'] .art-bar { background: #0a84ff; border-radius: 999px; }
+
+@media (prefers-color-scheme: dark) {
+  .setup-look[data-look='classic'] .setup-look-art { background: #141312; }
+  .setup-look[data-look='classic'] .art-card { background: #2a2826; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); }
+  .setup-look[data-look='classic'] .art-bar { background: #f0a040; }
+}
+
+.art-card {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.art-card.small {
+  top: 54px;
+  right: 52%;
+  height: 30px;
+}
+
+.art-bar {
+  position: absolute;
+  top: 64px;
+  left: 54%;
+  right: 12px;
+  height: 10px;
+  border-radius: 5px;
+}
+
+.setup-look-name {
+  font-weight: 600;
+}
+
+.setup-look-sub {
+  color: var(--text-2);
+}
+
+.setup-look-check,
+.setup-chip-check {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  transition: scale var(--release-duration) var(--release-easing), background var(--exit-duration) var(--exit-easing);
+}
+
+.setup-look-check {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: var(--accent);
+  color: var(--on-accent);
+  scale: 0;
+}
+
+.setup-look-check .icon,
+.setup-chip-check .icon {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.4;
+}
+
+.setup-look[aria-checked='true'] .setup-look-check {
+  scale: 1;
+}
+
+.setup-theme {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  margin-top: var(--s5);
+}
+
+.setup-chips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s2);
+  max-width: 540px;
+  margin-top: var(--s6);
+}
+
+.setup-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.setup-chip[aria-pressed='true'] {
+  box-shadow: var(--highlight), var(--shadow), inset 0 0 0 2px var(--ink);
+}
+
+.setup-chip-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.setup-chip-name {
+  font-weight: 600;
+}
+
+.setup-chip-when {
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.setup-chip-check {
+  flex: none;
+  box-shadow: inset 0 0 0 1.5px var(--fill-press);
+  color: transparent;
+}
+
+.setup-chip[aria-pressed='true'] .setup-chip-check {
+  background: var(--ink);
+  box-shadow: none;
+  color: var(--card);
+}
+
+.setup-hearts {
+  position: absolute;
+  inset: -40px -20px 0;
+  pointer-events: none;
+}
+
+.setup-hearts i {
+  position: absolute;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  background: oklch(0.7 0.18 var(--hue));
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21s-8.5-5.4-8.5-11.4C3.5 6.6 5.8 4.5 8.4 4.5c1.6 0 2.9.8 3.6 2 .7-1.2 2-2 3.6-2 2.6 0 4.9 2.1 4.9 5.1C20.5 15.6 12 21 12 21z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21s-8.5-5.4-8.5-11.4C3.5 6.6 5.8 4.5 8.4 4.5c1.6 0 2.9.8 3.6 2 .7-1.2 2-2 3.6-2 2.6 0 4.9 2.1 4.9 5.1C20.5 15.6 12 21 12 21z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+@media (max-width: 960px) {
+  .setup-grid {
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: var(--s8);
+  }
+
+  .setup-stage {
+    height: 320px;
+  }
+
+  .setup-chips {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* A plain text box for a settings row (Your name). */
+.text-box {
+  width: 220px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--r-control);
+  background: var(--fill);
+  font-size: 14px;
+}
+
+.text-box:focus {
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 /* ── Reminders list ─────────────────────────────────── */

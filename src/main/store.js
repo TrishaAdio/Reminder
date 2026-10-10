@@ -39,6 +39,9 @@ const DEFAULT_SETTINGS = {
   quiet: { enabled: false, from: '22:00', to: '07:00' },
   pausedUntil: null,
   companionOn: true,
+  // First-time setup: the name the app greets people by, and whether setup has been seen.
+  userName: '',
+  onboarded: false,
   companions: BUILTIN_COMPANIONS.map(entry),
   builtinCompanions: BUILTIN_SET,
 };
