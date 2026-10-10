@@ -1,8 +1,8 @@
 # RemindAni
 <!-- stats -->
-Total Code Lines : 12,798  
-Total Words Used With A Space Gap : 52,948  
-Approx Token Used : ~105,772
+Total Code Lines : 12,799  
+Total Words Used With A Space Gap : 52,949  
+Approx Token Used : ~105,775
 <!-- /stats -->
 
 Run on Windows 10/11 x64 with Node 22+: `npm install`, `npm start` (`npm start -- --fake-update=available|latest|error|download-error` shows every update state), `npm test`. `npm run dist` builds `dist/RemindAni-Setup-<version>.exe`. `npm run stats` refreshes the code counts above (tracked source files, not the lockfile, docs or assets; tokens ≈ characters / 4).

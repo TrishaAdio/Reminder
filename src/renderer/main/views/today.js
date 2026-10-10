@@ -36,8 +36,9 @@ function nextPictureTurn() {
 function greeting(hour) {
   if (hour >= 5 && hour < 12) return 'Good morning';
   if (hour >= 12 && hour < 17) return 'Good afternoon';
-  if (hour >= 17 && hour < 22) return 'Good evening';
-  return 'Hello, night owl';
+  if (hour >= 17) return 'Good evening';
+  // Midnight to 5 AM: a plain hello, not a joke.
+  return 'Hello';
 }
 
 function ring() {
