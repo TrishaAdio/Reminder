@@ -1,4 +1,4 @@
-import { installSpringProperties, animate, reducedMotion, FADE } from '../shared/spring.js';
+import { installSpringProperties, animate, reducedMotion, spring, FADE } from '../shared/spring.js';
 import { icon, appMark } from '../shared/icons.js';
 import { h } from './dom.js';
 import { createFormat } from './format.js';
@@ -10,6 +10,7 @@ import { listView } from './views/list.js';
 import { galleryView } from './views/gallery.js';
 import { editorView } from './views/editor.js';
 import { settingsView } from './views/settings.js';
+import { creditFooter } from './views/footer.js';
 
 installSpringProperties();
 
@@ -70,7 +71,32 @@ const titlebar = h(
   tabs,
 );
 const page = h('main', { class: 'page scroll', id: 'page', role: 'tabpanel' });
+// The credit sits under every page; views go in above it.
+const credit = creditFooter();
+page.append(credit);
 document.body.append(h('div', { class: 'shell' }, titlebar, page), toaster.el);
+
+// Idle loops (floating icon, glowing line, drifting glass backdrop) rest while the window
+// isn't in use, so a window left open in the background costs nothing.
+const setIdle = () => document.documentElement.classList.toggle('idle', document.hidden || !document.hasFocus());
+window.addEventListener('focus', setIdle);
+window.addEventListener('blur', setIdle);
+document.addEventListener('visibilitychange', setIdle);
+setIdle();
+
+// A page's contents arrive one after another, a few milliseconds apart. Individual
+// `translate`/`opacity` only, and nothing is left behind once it's done.
+function stagger(root) {
+  if (reducedMotion()) return;
+  const picks = [
+    ...root.querySelectorAll(':scope > :not(.back):not([hidden])'),
+    ...root.querySelectorAll('.rows > .row, .coming > li, .gallery > .preset, .rows-card > .field:not([hidden])'),
+  ];
+  const { duration, easing } = spring('enter');
+  picks.slice(0, 16).forEach((el, i) => {
+    el.animate([{ opacity: 0, translate: '0 12px' }, { opacity: 1, translate: '0 0' }], { duration, easing, delay: 40 + i * 32, fill: 'backwards' });
+  });
+}
 
 function backButton(label = 'Reminders') {
   return h('button', { class: 'back pressable', type: 'button', onclick: () => go({ tab: route.tab, page: null }, { back: true }) }, h('span', { html: icon('back') }), label);
@@ -148,7 +174,8 @@ function go(next, { back = false, section = null } = {}) {
     animate(old.el, out, reducedMotion() ? FADE : 'exit').then(() => old.el.remove());
   }
   page.scrollTop = 0;
-  page.append(view.el);
+  page.insertBefore(view.el, credit);
+  stagger(view.el);
   if (old) {
     const dx = back ? -32 : 32;
     const into = reducedMotion()

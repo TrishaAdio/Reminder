@@ -1,0 +1,267 @@
+/* Small motion details across the main window. Each one uses the individual `translate`,
+   `scale` and `rotate` properties, so it never fights a transform something else already
+   sets (FLIP, the tab thumb, pushed pages). All of it stops with reduced motion. */
+
+/* ── Hover: the icon tile gives a little wiggle ─────────────────────────── */
+
+.row:hover .tile .icon,
+.coming-row:hover .tile .icon,
+.preset:hover .tile .icon,
+.editor-head .tile:hover .icon {
+  animation: wiggle 560ms var(--release-easing) both;
+}
+
+@keyframes wiggle {
+  0% { rotate: 0deg; scale: 1; }
+  25% { rotate: -12deg; scale: 1.12; }
+  50% { rotate: 9deg; scale: 1.08; }
+  75% { rotate: -4deg; scale: 1.03; }
+  100% { rotate: 0deg; scale: 1; }
+}
+
+/* ── Hover: a back arrow that leans back, a "+" that turns ──────────────── */
+
+.back .icon {
+  transition: translate var(--release-duration) var(--release-easing);
+}
+
+.back:hover .icon {
+  translate: -3px 0;
+}
+
+.button .icon {
+  transition: rotate var(--release-duration) var(--release-easing), scale var(--release-duration) var(--release-easing);
+}
+
+.button:hover .icon {
+  scale: 1.12;
+}
+
+.button.primary:hover .icon {
+  rotate: 90deg;
+}
+
+/* ── Primary buttons: a band of light sweeps across on hover ─────────────── */
+
+.button.primary {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.button.primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.38) 48%, transparent 66%);
+  translate: -120% 0;
+  pointer-events: none;
+}
+
+.button.primary:hover::after {
+  animation: sweep 900ms var(--exit-easing) both;
+}
+
+@keyframes sweep {
+  to { translate: 120% 0; }
+}
+
+/* ── Tabs: colour eases, the update dot sends out a soft ring ────────────── */
+
+.tab {
+  transition: color var(--exit-duration) var(--exit-easing);
+}
+
+.badge-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  animation: ping 2.4s var(--exit-easing) infinite;
+}
+
+@keyframes ping {
+  0% { scale: 1; opacity: 0.7; }
+  60%, 100% { scale: 3; opacity: 0; }
+}
+
+/* ── Today: the icon floats in the ring, the "now" line glows ────────────── */
+
+.hero .ring-center .tile {
+  animation: float 3.6s ease-in-out infinite alternate;
+}
+
+@keyframes float {
+  from { translate: 0 2px; }
+  to { translate: 0 -3px; }
+}
+
+.now-line::after {
+  content: '';
+  position: absolute;
+  inset: -2px -4px;
+  border-radius: 4px;
+  background: var(--text);
+  filter: blur(4px);
+  opacity: 0;
+  animation: glow 2.6s ease-in-out infinite;
+}
+
+@keyframes glow {
+  50% { opacity: 0.45; }
+}
+
+.dot {
+  transition: scale var(--release-duration) var(--release-easing);
+}
+
+.dot:hover {
+  scale: 1.6;
+}
+
+/* ── Settings: pictures peek up a little on hover ───────────────────────── */
+
+.buddy-thumb img {
+  transition: translate var(--release-duration) var(--release-easing);
+}
+
+.buddy-thumb:hover img {
+  translate: 0 -5px;
+}
+
+/* ── Footer credit ──────────────────────────────────────────────────────── */
+
+.credit {
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+  padding: var(--s10) 0 0;
+}
+
+.credit-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--fill);
+  box-shadow: inset 0 0 0 1px var(--separator);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: translate var(--release-duration) var(--release-easing), box-shadow var(--exit-duration) var(--exit-easing);
+}
+
+.credit-pill:hover {
+  translate: 0 -2px;
+  box-shadow: inset 0 0 0 1px var(--separator), var(--shadow);
+}
+
+.credit-heart {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin: 0 -1px;
+  border-radius: 50%;
+}
+
+.credit-heart svg {
+  width: 17px;
+  height: 17px;
+  overflow: visible;
+  animation: heartbeat 1.6s ease-in-out infinite;
+  filter: drop-shadow(0 1px 4px rgba(255, 55, 95, 0.45));
+}
+
+.credit-pill:hover .credit-heart svg {
+  animation-duration: 0.8s;
+}
+
+@keyframes heartbeat {
+  0%, 40%, 100% { scale: 1; }
+  10% { scale: 1.22; }
+  20% { scale: 0.96; }
+  30% { scale: 1.12; }
+}
+
+.credit-name {
+  font-weight: 700;
+  /* Same lightness throughout, readable on light and dark. */
+  --cl: 0.6;
+  background: linear-gradient(90deg, oklch(var(--cl) 0.2 0), oklch(var(--cl) 0.17 50), oklch(var(--cl) 0.2 300), oklch(var(--cl) 0.16 250), oklch(var(--cl) 0.2 0)) 0 0 / 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+
+@media (prefers-color-scheme: dark) {
+  .credit-name { --cl: 0.8; }
+}
+
+@keyframes shimmer {
+  to { background-position: 150% 0; }
+}
+
+.credit-burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  pointer-events: none;
+}
+
+.glass .credit-pill {
+  background: var(--glass-grain), linear-gradient(180deg, var(--glass-sheen), transparent 60%), var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-depth), var(--shadow);
+}
+
+.glass .credit-pill:hover {
+  box-shadow: var(--glass-depth), var(--shadow-lift);
+}
+
+/* Idle loops and shimmer rest while the window isn't in use. */
+.idle .badge-dot::after,
+.idle .hero .ring-center .tile,
+.idle .now-line::after,
+.idle .credit-heart svg,
+.idle .credit-name {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row:hover .tile .icon,
+  .coming-row:hover .tile .icon,
+  .preset:hover .tile .icon,
+  .editor-head .tile:hover .icon,
+  .button.primary:hover::after,
+  .badge-dot::after,
+  .hero .ring-center .tile,
+  .now-line::after,
+  .credit-heart svg,
+  .credit-name {
+    animation: none;
+  }
+
+  .back:hover .icon,
+  .button:hover .icon,
+  .button.primary:hover .icon,
+  .dot:hover,
+  .buddy-thumb:hover img,
+  .credit-pill:hover {
+    translate: none;
+    rotate: none;
+    scale: none;
+  }
+}

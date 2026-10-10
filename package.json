@@ -1,7 +1,7 @@
 {
   "name": "remindani",
   "productName": "RemindAni",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Reminders that are impossible to miss and a pleasure to dismiss.",
   "main": "src/main/index.js",
   "author": "RemindAni",

@@ -103,10 +103,15 @@ body {
   /* Short and long pages share one width, so switching tabs never re-centres the content
      when the scrollbar comes or goes. */
   scrollbar-gutter: stable both-edges;
-  padding: var(--s2) var(--s8) 72px;
+  padding: var(--s2) var(--s8) var(--s6);
+  /* A column, so the credit footer sits at the bottom of short pages. */
+  display: flex;
+  flex-direction: column;
 }
 
 .view {
+  flex: none;
+  width: 100%;
   max-width: 760px;
   margin: 0 auto;
 }

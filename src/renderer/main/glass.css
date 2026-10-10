@@ -35,6 +35,68 @@
     var(--veil);
 }
 
+/* The colours drift: two oversized layers carrying half the blobs each wander slowly in
+   opposite directions, so the glass catches a gently changing backdrop. They move by
+   transform only and pause while the window isn't focused. */
+.glass .shell::before,
+.glass .shell::after {
+  content: '';
+  position: fixed;
+  inset: -12%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.glass .shell::before {
+  background:
+    radial-gradient(circle at 28% 26%, var(--blob-6) 0 5%, transparent 15%),
+    radial-gradient(circle at 70% 76%, var(--blob-1) 0 6%, transparent 17%);
+  opacity: 0.85;
+  animation: drift-a 38s ease-in-out infinite alternate;
+}
+
+.glass .shell::after {
+  background:
+    radial-gradient(circle at 62% 30%, var(--blob-3) 0 5%, transparent 15%),
+    radial-gradient(circle at 30% 70%, var(--blob-2) 0 6%, transparent 17%);
+  opacity: 0.8;
+  animation: drift-b 46s ease-in-out infinite alternate;
+}
+
+.glass.material .shell::before,
+.glass.material .shell::after {
+  opacity: 0.45;
+}
+
+.shell {
+  position: relative;
+  isolation: isolate;
+}
+
+@keyframes drift-a {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(6%, -4%) scale(1.08); }
+  100% { transform: translate(-5%, 5%) scale(0.96); }
+}
+
+@keyframes drift-b {
+  0% { transform: translate(0, 0) scale(1.04); }
+  50% { transform: translate(-6%, 4%) scale(0.95); }
+  100% { transform: translate(5%, -5%) scale(1.06); }
+}
+
+.idle .shell::before,
+.idle .shell::after {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass .shell::before,
+  .glass .shell::after {
+    animation: none;
+  }
+}
+
 /* ── Material ─────────────────────────────────────────────────────────── */
 
 /* Layers, top to bottom: a fine grain (frosted, not clear), a sheen fading down from the lit
