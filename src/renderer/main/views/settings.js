@@ -170,6 +170,8 @@ export function settingsView({ api, state, fmt, player, actions }) {
     },
     onchange: (e) => player.play('volume', { kind: 'builtin', id: 'chime' }, Number(e.target.value) / 100),
   });
+  const fadeOthers = toggle({ checked: s.settings.fadeOthers, label: 'Fade out other sound', onChange: (on) => api.setSetting('fadeOthers', on) });
+  const fadeRow = field('Fade out other sound', fadeOthers.el, 'Music and videos fade to silence in the 10 seconds before a reminder, and fade back in after you answer.');
   const paintVolume = (pct) => {
     volume.style.setProperty('--level', `${pct}%`);
     setText(volumeValue, `${pct}%`);
@@ -220,6 +222,7 @@ export function settingsView({ api, state, fmt, player, actions }) {
       'Sound',
       'sound',
       h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Volume'), h('span', { class: 'muted', html: icon('speaker-low') }), volume, h('span', { class: 'muted', html: icon('speaker') }), volumeValue),
+      fadeRow,
     ),
     group('Keyboard', 'keys', shortcut('New reminder', 'Ctrl+N'), shortcut('Today, Reminders, Settings', 'Ctrl+1, 2, 3'), shortcut('Back', 'Esc'), shortcut('Close this window', 'Ctrl+W'), shortcut('On a reminder card', 'Enter = Done, Esc, 2 or 3 = wait')),
     about,
@@ -247,6 +250,8 @@ export function settingsView({ api, state, fmt, player, actions }) {
     position.set(st.position);
     preview.set(st.position);
     dim.set(st.dim);
+    fadeOthers.set(st.fadeOthers);
+    fadeRow.hidden = !s.env.canFade;
     defaultWait.set(st.defaultWait);
     sampleRow.hidden = !s.reminders.length;
     paintCompanions();

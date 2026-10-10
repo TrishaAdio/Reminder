@@ -297,10 +297,30 @@ body {
 /* Glass look: a frosted card. It blurs what is inside this window behind it (the dim, the
    picture's tucked-in lower edge, cards waiting underneath) and lights its rim like iOS. */
 .glass .surface {
-  background: linear-gradient(180deg, var(--glass-sheen), transparent 45%), var(--glass-fill-strong);
+  background:
+    var(--glass-grain),
+    linear-gradient(180deg, var(--glass-sheen), transparent 40%),
+    radial-gradient(90% 120% at 0% 0%, oklch(0.8 0.13 var(--hue, 240) / 0.3), transparent 60%),
+    radial-gradient(80% 90% at 100% 100%, var(--glass-glow), transparent 60%),
+    var(--glass-fill-strong);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
-  box-shadow: inset 0 0 0 1px var(--glass-edge), inset 0 1px 0 var(--glass-rim);
+  box-shadow: var(--glass-depth);
+}
+
+/* The same light-catching bevel as the main window's glass. */
+.glass .surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--glass-rim-gradient);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 /* The see-through card would show the picture's cut-off lower edge as a hard shape. The

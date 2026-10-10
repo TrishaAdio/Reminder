@@ -10,6 +10,7 @@ const Store = require('./store');
 const Engine = require('./engine');
 const Popup = require('./popup');
 const Updates = require('./updater');
+const { AudioDucker } = require('./audio-duck');
 
 app.setAppUserModelId('com.remindani.app');
 // Reminders must be able to make a sound without anyone clicking first.
@@ -62,6 +63,7 @@ function boot() {
       !String(app.getGPUFeatureStatus().gpu_compositing).startsWith('enabled');
 
     const engine = new Engine(store);
+    const ducker = new AudioDucker({ enabled: store.data.settings.fadeOthers, log: (m) => console.log(m) });
     const updates = new Updates({ fake: fakeUpdate, beforeInstall: () => (quitting = true) });
     let tray = null;
     const popup = new Popup({
@@ -75,7 +77,7 @@ function boot() {
     await popup.init();
 
     mainWindow = createMainWindow({ isQuitting, look: store.data.settings.look });
-    ipc = registerIpc({ store, engine, popup, updates, env, mainWindow });
+    ipc = registerIpc({ store, engine, popup, updates, env, mainWindow, ducker });
 
     const describe = () => {
       const { pausedUntil } = store.data.settings;
@@ -102,6 +104,25 @@ function boot() {
         },
       },
     });
+
+    // Other apps' sound fades to silence over the 10 seconds before a reminder, stays down
+    // while cards are on screen, and fades back over 10 seconds once the last is answered.
+    // If the reminder doesn't come after all (switched off, paused), it fades back anyway.
+    let notComing = null;
+    engine.on('approaching', ({ in: ms }) => {
+      ducker.duck(ms);
+      clearTimeout(notComing);
+      notComing = setTimeout(() => {
+        if (!popup.visible) ducker.restore(3000);
+      }, ms + 4000);
+    });
+    // A card that shows without warning (Test now, or after the PC wakes) fades quickly.
+    popup.on('present', () => {
+      clearTimeout(notComing);
+      ducker.duck(1200);
+    });
+    popup.on('hidden', () => ducker.restore(10_000));
+    app.on('will-quit', () => ducker.quit());
 
     engine.on('fire', (ids) => popup.enqueue(ids));
     engine.on('change', () => tray.refresh());

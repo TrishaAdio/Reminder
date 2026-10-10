@@ -116,6 +116,7 @@ class Popup extends EventEmitter {
   async present() {
     this.current = this.queue.shift() ?? null;
     if (!this.current) return;
+    if (this.phase === 'hidden') this.emit('present', this.current);
     this.phase = 'showing';
     await this.ensureWindow();
     if (this.current) this.send('popup:show', this.payload(this.current));

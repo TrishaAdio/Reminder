@@ -133,12 +133,30 @@
 
   /* The material: a translucent fill, a sheen fading down from the lit top edge, a bright
      rim and a blur strong enough to keep text readable over anything. */
-  --glass-fill: rgba(255, 255, 255, 0.5);
-  --glass-fill-strong: rgba(255, 255, 255, 0.72);
-  --glass-sheen: rgba(255, 255, 255, 0.55);
+  --glass-fill: rgba(255, 255, 255, 0.34);
+  --glass-fill-strong: rgba(255, 255, 255, 0.62);
+  --glass-sheen: rgba(255, 255, 255, 0.5);
+  --glass-glow: rgba(190, 220, 255, 0.28);
   --glass-rim: rgba(255, 255, 255, 0.85);
   --glass-edge: rgba(255, 255, 255, 0.45);
-  --glass-blur: blur(26px) saturate(1.9);
+  --glass-blur: blur(30px) saturate(2.1) brightness(1.06);
+  --glass-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --glass-rim-gradient: linear-gradient(140deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.35) 22%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.2) 78%, rgba(255, 255, 255, 0.7));
+  --glass-depth: inset 0 1px 1px rgba(255, 255, 255, 0.75), inset 0 -1px 1px rgba(255, 255, 255, 0.25), inset 0 0 22px rgba(255, 255, 255, 0.18);
+
+  /* Wallpaper blobs behind the glass. */
+  --blob-1: oklch(0.78 0.16 255);
+  --blob-2: oklch(0.8 0.15 350);
+  --blob-3: oklch(0.85 0.14 75);
+  --blob-4: oklch(0.82 0.13 170);
+  --blob-5: oklch(0.76 0.15 295);
+  --blob-6: oklch(0.88 0.11 210);
+  --blob-1-soft: oklch(0.78 0.16 255 / 0.55);
+  --blob-2-soft: oklch(0.8 0.15 350 / 0.5);
+  --blob-3-soft: oklch(0.85 0.14 75 / 0.5);
+  --blob-4-soft: oklch(0.82 0.13 170 / 0.5);
+  --blob-5-soft: oklch(0.76 0.15 295 / 0.5);
+  --veil: rgba(242, 242, 247, 0.4);
 
   --r-card: 26px;
   --r-row: 14px;
@@ -177,12 +195,29 @@
     --shadow-lift: 0 2px 6px rgba(0, 0, 0, 0.35), 0 30px 70px -18px rgba(0, 0, 0, 0.8);
     --shadow-knob: 0 3px 8px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.16);
 
-    --glass-fill: rgba(44, 44, 52, 0.46);
-    --glass-fill-strong: rgba(40, 40, 48, 0.7);
-    --glass-sheen: rgba(255, 255, 255, 0.09);
+    --glass-fill: rgba(30, 30, 38, 0.38);
+    --glass-fill-strong: rgba(34, 34, 42, 0.66);
+    --glass-sheen: rgba(255, 255, 255, 0.1);
+    --glass-glow: rgba(120, 160, 255, 0.12);
     --glass-rim: rgba(255, 255, 255, 0.22);
     --glass-edge: rgba(255, 255, 255, 0.08);
-    --glass-blur: blur(26px) saturate(1.7);
+    --glass-blur: blur(30px) saturate(1.8) brightness(0.92);
+    --glass-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    --glass-rim-gradient: linear-gradient(140deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.14) 22%, rgba(255, 255, 255, 0.03) 50%, rgba(255, 255, 255, 0.08) 78%, rgba(255, 255, 255, 0.3));
+    --glass-depth: inset 0 1px 1px rgba(255, 255, 255, 0.16), inset 0 -1px 1px rgba(255, 255, 255, 0.05), inset 0 0 22px rgba(255, 255, 255, 0.04);
+
+    --blob-1: oklch(0.5 0.2 262);
+    --blob-2: oklch(0.52 0.2 345);
+    --blob-3: oklch(0.6 0.16 60);
+    --blob-4: oklch(0.52 0.13 175);
+    --blob-5: oklch(0.45 0.2 295);
+    --blob-6: oklch(0.55 0.14 220);
+    --blob-1-soft: oklch(0.5 0.2 262 / 0.5);
+    --blob-2-soft: oklch(0.52 0.2 345 / 0.45);
+    --blob-3-soft: oklch(0.6 0.16 60 / 0.42);
+    --blob-4-soft: oklch(0.52 0.13 175 / 0.42);
+    --blob-5-soft: oklch(0.45 0.2 295 / 0.45);
+    --veil: rgba(0, 0, 0, 0.32);
   }
 }
 

@@ -23,7 +23,7 @@ const loginItem = {
   },
 };
 
-function registerIpc({ store, engine, popup, updates, env, mainWindow }) {
+function registerIpc({ store, engine, popup, updates, env, mainWindow, ducker }) {
   const { data } = store;
   const snapshot = () => ({
     reminders: store.data.reminders,
@@ -43,6 +43,7 @@ function registerIpc({ store, engine, popup, updates, env, mainWindow }) {
       dataPath: store.dir,
       version: app.getVersion(),
       material: usesMaterial(store.data.settings.look),
+      canFade: ducker.supported,
     },
   });
 
@@ -130,6 +131,12 @@ function registerIpc({ store, engine, popup, updates, env, mainWindow }) {
     volume: (v) => typeof v === 'number' && ((data.settings.volume = Math.min(1, Math.max(0, v))), true),
     openAtLogin: (v) => typeof v === 'boolean' && (loginItem.set(v), true),
     dim: (v) => typeof v === 'boolean' && ((data.settings.dim = v), true),
+    fadeOthers: (v) => {
+      if (typeof v !== 'boolean') return false;
+      data.settings.fadeOthers = v;
+      ducker.setEnabled(v);
+      return true;
+    },
     companionOn: (v) => typeof v === 'boolean' && ((data.settings.companionOn = v), true),
     position: (v) => POSITIONS.includes(v) && ((data.settings.position = v), true),
     theme: (v) => {

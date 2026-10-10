@@ -5,53 +5,79 @@
    On Windows 11 the window itself is acrylic (`.material`): the desktop shows through,
    blurred by the system. Elsewhere the page paints a soft wallpaper for the glass to frost. */
 
-/* ── Backdrop ─────────────────────────────────────────────────────────── */
+/* ── Backdrop: colour with shapes, so the frosting has something to frost ── */
 
+/* Glass only reads as glass when you can see what it blurs. Soft gradients blur into
+   themselves and the panels look merely see-through, so the wallpaper has distinct blobs of
+   colour; cards and the tab bar sit across their edges, and scrolling slides them past. */
 .glass body {
   background:
-    radial-gradient(55% 50% at 8% 6%, rgba(122, 168, 255, 0.55), transparent 72%),
-    radial-gradient(48% 45% at 96% 12%, rgba(255, 146, 196, 0.42), transparent 72%),
-    radial-gradient(55% 55% at 82% 98%, rgba(255, 196, 120, 0.42), transparent 72%),
-    radial-gradient(50% 50% at 6% 92%, rgba(124, 226, 196, 0.38), transparent 72%),
+    radial-gradient(circle at 12% 14%, var(--blob-1) 0 9%, transparent 24%),
+    radial-gradient(circle at 86% 12%, var(--blob-2) 0 8%, transparent 22%),
+    radial-gradient(circle at 74% 58%, var(--blob-3) 0 10%, transparent 26%),
+    radial-gradient(circle at 18% 72%, var(--blob-4) 0 9%, transparent 24%),
+    radial-gradient(circle at 48% 108%, var(--blob-5) 0 12%, transparent 30%),
+    radial-gradient(circle at 96% 92%, var(--blob-2) 0 6%, transparent 18%),
+    radial-gradient(circle at 44% 34%, var(--blob-6) 0 6%, transparent 18%),
     var(--window);
 }
 
-@media (prefers-color-scheme: dark) {
-  .glass body {
-    background:
-      radial-gradient(55% 50% at 8% 6%, rgba(70, 96, 220, 0.5), transparent 72%),
-      radial-gradient(48% 45% at 96% 12%, rgba(196, 70, 150, 0.36), transparent 72%),
-      radial-gradient(55% 55% at 82% 98%, rgba(220, 120, 40, 0.3), transparent 72%),
-      radial-gradient(50% 50% at 6% 92%, rgba(30, 160, 140, 0.3), transparent 72%),
-      var(--window);
-  }
-}
-
-/* The system material is already blurred desktop; a light veil keeps text readable. */
+/* On Windows 11 the desktop is already behind the window as blurred acrylic. A light veil
+   and the same blobs at partial strength go on top, so the cards still have shapes to frost
+   while the desktop shows through between them. */
 .glass.material body {
-  background: rgba(242, 242, 247, 0.38);
-}
-
-@media (prefers-color-scheme: dark) {
-  .glass.material body {
-    background: rgba(0, 0, 0, 0.3);
-  }
+  background:
+    radial-gradient(circle at 12% 14%, var(--blob-1-soft) 0 9%, transparent 24%),
+    radial-gradient(circle at 86% 12%, var(--blob-2-soft) 0 8%, transparent 22%),
+    radial-gradient(circle at 74% 58%, var(--blob-3-soft) 0 10%, transparent 26%),
+    radial-gradient(circle at 18% 72%, var(--blob-4-soft) 0 9%, transparent 24%),
+    radial-gradient(circle at 48% 108%, var(--blob-5-soft) 0 12%, transparent 30%),
+    var(--veil);
 }
 
 /* ── Material ─────────────────────────────────────────────────────────── */
 
+/* Layers, top to bottom: a fine grain (frosted, not clear), a sheen fading down from the lit
+   top, a faint cool glow in the lower corner (light bending through the thickness), and the
+   tinted fill. Behind it all, the blurred, saturated backdrop. */
 .glass .card,
 .glass .preset,
 .glass .popover {
-  background: linear-gradient(180deg, var(--glass-sheen), transparent 42%), var(--glass-fill);
+  background:
+    var(--glass-grain),
+    linear-gradient(180deg, var(--glass-sheen), transparent 38%),
+    radial-gradient(120% 80% at 100% 100%, var(--glass-glow), transparent 55%),
+    var(--glass-fill);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
-  box-shadow: inset 0 0 0 1px var(--glass-edge), inset 0 1px 0 var(--glass-rim), var(--shadow);
+  box-shadow: var(--glass-depth), var(--shadow);
 }
 
 .glass .popover {
-  background: linear-gradient(180deg, var(--glass-sheen), transparent 42%), var(--glass-fill-strong);
-  box-shadow: inset 0 0 0 1px var(--glass-edge), inset 0 1px 0 var(--glass-rim), var(--shadow-lift);
+  background:
+    var(--glass-grain),
+    linear-gradient(180deg, var(--glass-sheen), transparent 38%),
+    var(--glass-fill-strong);
+  box-shadow: var(--glass-depth), var(--shadow-lift);
+}
+
+/* The rim: a 1px edge that catches light at the top-left and again faintly at the bottom-
+   right, like the bevel of a glass pane, drawn as a gradient border cut out with a mask. */
+.glass .card::before,
+.glass .preset::before,
+.glass .popover::before,
+.glass .tabs::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--glass-rim-gradient);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 .glass .hero {
@@ -59,7 +85,11 @@
 }
 
 .glass .hero:has(.stretched:not([hidden])):hover {
-  background: linear-gradient(180deg, var(--glass-sheen), transparent 42%), var(--glass-fill-strong);
+  background:
+    var(--glass-grain),
+    linear-gradient(180deg, var(--glass-sheen), transparent 38%),
+    radial-gradient(120% 80% at 100% 100%, var(--glass-glow), transparent 55%),
+    var(--glass-fill-strong);
 }
 
 /* ── Title bar: a floating glass capsule with a sliding lens ─────────── */
@@ -69,10 +99,10 @@
   grid-template-columns: repeat(3, 108px);
   padding: 3px;
   border-radius: 999px;
-  background: linear-gradient(180deg, var(--glass-sheen), transparent 60%), var(--glass-fill);
+  background: var(--glass-grain), linear-gradient(180deg, var(--glass-sheen), transparent 60%), var(--glass-fill);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
-  box-shadow: inset 0 0 0 1px var(--glass-edge), inset 0 1px 0 var(--glass-rim), var(--shadow);
+  box-shadow: var(--glass-depth), var(--shadow);
 }
 
 .glass .tab-thumb {

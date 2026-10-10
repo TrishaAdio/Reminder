@@ -8,6 +8,8 @@ const scheduler = require('./scheduler');
 // time-zone changes (which Windows does not announce to Node) are noticed within half a minute.
 const MAX_SLEEP = 30_000;
 const DAY = 86_400_000;
+// How far ahead a reminder is announced ('approaching'), so other apps' sound can fade out.
+const LEAD = 10_000;
 const userSetZone = 'TZ' in process.env;
 
 function refreshZone() {
@@ -23,6 +25,7 @@ class Engine extends EventEmitter {
     this.timer = null;
     this.clock = { lastNow: null, lastZone: null };
     this.muted = false;
+    this.announced = null;
   }
 
   get reminders() {
@@ -77,14 +80,31 @@ class Engine extends EventEmitter {
       this.emit('change');
     }
     if (fire.length) this.emit('fire', fire);
+    this.lookAhead(now);
     this.arm(now);
   }
 
+  // Announces the next reminder once, LEAD before it comes up, unless it will be skipped
+  // (paused or in quiet hours by then).
+  lookAhead(now) {
+    const next = this.upcoming();
+    if (!next || next.at <= now || next.at - now > LEAD + 100) return;
+    if (scheduler.isMuted(next.at, this.settings)) return;
+    const key = `${next.reminder.id}:${next.at}`;
+    if (key === this.announced) return;
+    this.announced = key;
+    this.emit('approaching', { id: next.reminder.id, at: next.at, in: next.at - now });
+  }
+
   arm(now) {
-    const times = this.reminders
-      .filter((r) => r.enabled)
-      .map((r) => this.runtime[r.id]?.nextAt)
-      .filter((t) => t != null);
+    const times = [];
+    for (const r of this.reminders) {
+      const t = r.enabled ? this.runtime[r.id]?.nextAt : null;
+      if (t == null) continue;
+      times.push(t);
+      // Also wake LEAD before it, to announce it.
+      if (t - LEAD > now) times.push(t - LEAD);
+    }
     if (this.settings.pausedUntil != null) times.push(this.settings.pausedUntil);
     const next = times.length ? Math.min(...times) : Infinity;
     this.timer = setTimeout(() => this.run(), Math.min(MAX_SLEEP, Math.max(250, next - now)));

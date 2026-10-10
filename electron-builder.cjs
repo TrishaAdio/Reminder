@@ -11,6 +11,9 @@ module.exports = {
   copyright: 'Copyright © 2026 RemindAni',
   directories: { output: 'dist', buildResources: 'build' },
   files: ['src/**/*', 'assets/**/*', 'package.json'],
+  // Fades other apps' sound around reminders (build/audio/duck.cs, built by
+  // scripts/build-audio-helper.mjs before each installer build).
+  extraResources: [{ from: 'build/bin/RemindAni-Audio.exe', to: 'RemindAni-Audio.exe' }],
   asar: true,
   electronLanguages: ['en-US'],
   // Uploads go into a draft that already exists (parallel uploads would otherwise each create

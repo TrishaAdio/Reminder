@@ -22,6 +22,7 @@ const MAX_COMPANIONS = 24;
 const DEFAULT_SETTINGS = {
   defaultWait: 2,
   volume: 0.8,
+  fadeOthers: true,
   theme: 'system',
   look: 'classic',
   position: 'top',
