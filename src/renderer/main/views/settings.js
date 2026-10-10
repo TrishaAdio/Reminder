@@ -1,4 +1,4 @@
-import { h, setText } from '../dom.js';
+import { h, setText, setValue } from '../dom.js';
 import { toggle, segmented, timeField } from '../controls.js';
 import { flip } from '../flip.js';
 import { icon, appMark } from '../../shared/icons.js';
@@ -32,6 +32,23 @@ function positionPreview() {
 
 export function settingsView({ api, state, fmt, player, actions }) {
   let s = state;
+
+  // The name the home page greets with; saved a moment after typing stops.
+  let nameTimer = 0;
+  const nameInput = h('input', {
+    class: 'text-box',
+    type: 'text',
+    maxLength: 32,
+    placeholder: 'Your name',
+    spellcheck: 'false',
+    autocomplete: 'off',
+    'aria-label': 'Your name',
+    oninput: (e) => {
+      clearTimeout(nameTimer);
+      nameTimer = setTimeout(() => api.setSetting('userName', e.target.value), 400);
+    },
+    onkeydown: (e) => e.key === 'Enter' && e.target.blur(),
+  });
 
   const login = toggle({ checked: s.settings.openAtLogin, label: 'Open at sign-in', onChange: (on) => api.setSetting('openAtLogin', on) });
   const theme = segmented({
@@ -192,6 +209,11 @@ export function settingsView({ api, state, fmt, player, actions }) {
     ),
     updates.el,
     field(
+      'First-time setup',
+      h('button', { class: 'button small pressable', type: 'button', onclick: () => actions.setup() }, 'Run it again'),
+      'Name, look and a first reminder, one step at a time.',
+    ),
+    field(
       'Reminders and imported sounds',
       h('button', { class: 'button small pressable', type: 'button', onclick: () => api.showDataFolder() }, h('span', { html: icon('folder') }), 'Show folder'),
       s.env.dataPath,
@@ -205,6 +227,7 @@ export function settingsView({ api, state, fmt, player, actions }) {
     group(
       'General',
       'general',
+      field('Your name', nameInput, 'Your home page greets you with it.'),
       field('Open at sign-in', login.el, 'Starts quietly in the tray.'),
       field('Appearance', h('div', { class: 'seg-fixed' }, theme.el)),
       h('div', { class: 'field' }, h('span', { class: 'field-label grow stack' }, 'Style', lookSub), h('div', { class: 'seg-fixed' }, look.el)),
@@ -239,6 +262,7 @@ export function settingsView({ api, state, fmt, player, actions }) {
 
   function paint() {
     const st = s.settings;
+    setValue(nameInput, st.userName ?? '');
     login.set(st.openAtLogin);
     theme.set(st.theme);
     look.set(st.look);

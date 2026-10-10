@@ -141,6 +141,13 @@ function registerIpc({ store, engine, popup, updates, env, mainWindow, ducker })
       return true;
     },
     companionOn: (v) => typeof v === 'boolean' && ((data.settings.companionOn = v), true),
+    // Collapsed whitespace, no control characters, at most 32 characters.
+    userName: (v) => {
+      if (typeof v !== 'string') return false;
+      data.settings.userName = [...v.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim()].slice(0, 32).join('');
+      return true;
+    },
+    onboarded: (v) => typeof v === 'boolean' && ((data.settings.onboarded = v), true),
     position: (v) => POSITIONS.includes(v) && ((data.settings.position = v), true),
     theme: (v) => {
       if (!THEMES.includes(v)) return false;

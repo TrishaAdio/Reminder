@@ -6,6 +6,15 @@
   font-display: block;
 }
 
+/* The face the person's own name is written in (OFL, see fonts/DancingScript-OFL.txt). */
+@font-face {
+  font-family: 'Dancing Script';
+  src: url('./fonts/DancingScript.ttf') format('truetype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   color-scheme: light dark;
   --font: 'Inter', 'Segoe UI Variable Text', 'Segoe UI', sans-serif;

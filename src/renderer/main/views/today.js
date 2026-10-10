@@ -1,6 +1,7 @@
 import { h, setText } from '../dom.js';
 import { icon, tintClass } from '../../shared/icons.js';
 import { animate, reducedMotion } from '../../shared/spring.js';
+import { livePicture } from '../live-picture.js';
 
 const R = 60;
 const C = 2 * Math.PI * R;
@@ -97,7 +98,10 @@ export function todayView({ api, state, fmt, go }) {
   const dateFmt = new Intl.DateTimeFormat(s.env.locale, { weekday: 'long', month: 'long', day: 'numeric' });
 
   // ── Greeting, date, and the two things people reach for most ──
-  const hello = h('h1', { class: 't-title today-hello' });
+  // "Good evening, Anirban": the name in a script face, so the page feels like it's theirs.
+  const helloWord = h('span', {});
+  const helloName = h('span', { class: 'today-name' });
+  const hello = h('h1', { class: 't-title today-hello' }, helloWord, helloName);
   const date = h('span', { class: 'today-date' });
   const chip = h('span', { class: 'today-chip t-micro' });
   const pauseButton = h('button', { class: 'button small pressable', type: 'button', onclick: () => api.pause('1h') }, h('span', { html: icon('pause') }), 'Pause 1 hour');
@@ -119,8 +123,8 @@ export function todayView({ api, state, fmt, go }) {
   const actions = h('div', { class: 'hero-actions' });
   const open = h('button', { class: 'stretched', type: 'button' });
   const tryIt = h('button', { class: 'button small hero-try pressable', type: 'button' }, h('span', { html: icon('play') }), 'Test now');
-  const buddyImg = h('img', { class: 'hero-buddy-img', alt: '', draggable: 'false' });
-  const buddy = h('button', { class: 'hero-buddy', type: 'button', title: 'Another picture', 'aria-label': 'Show another picture', onclick: () => turnPicture(1) }, buddyImg);
+  const live = livePicture({ className: 'hero-buddy-figure' });
+  const buddy = h('button', { class: 'hero-buddy', type: 'button', title: 'Another picture', 'aria-label': 'Show another picture', onclick: () => turnPicture(1) }, live.el);
   const hero = h('section', { class: 'hero card' }, r.el, h('div', { class: 'hero-text' }, eyebrow, name, big, sub, actions), open, buddy);
 
   // ── Numbers for today ──
@@ -164,6 +168,8 @@ export function todayView({ api, state, fmt, go }) {
   let heroKey = null;
   let pictureTurn = nextPictureTurn();
   let pictureFile = null;
+  let lastLine = '';
+  const userName = () => (s.settings.userName ?? '').trim();
 
   const byId = (id) => s.reminders.find((x) => x.id === id);
 
@@ -187,8 +193,25 @@ export function todayView({ api, state, fmt, go }) {
     const c = list[((pictureTurn % list.length) + list.length) % list.length];
     if (c.file === pictureFile) return;
     pictureFile = c.file;
-    buddyImg.src = pictureUrl(c);
-    buddyImg.alt = c.name ?? '';
+    live.setSource(pictureUrl(c), c.name ?? '');
+  }
+
+  // Things the picture says when it pops up: mostly kind words, sometimes what's next.
+  function line() {
+    const n = userName();
+    const up = nextUp();
+    const list = [
+      n ? `Hi, ${n}!` : 'Hi there!',
+      n ? `You’re doing great, ${n}!` : 'You’re doing great!',
+      'Had some water yet?',
+      'Don’t forget to stretch!',
+      'I’ll remind you, promise.',
+      n ? `Proud of you, ${n}.` : 'Proud of you.',
+    ];
+    if (up) list.push(`${up.rem.name.trim() || 'Reminder'} ${fmt.relative(up.st.nextAt, Date.now())}!`);
+    const pick = list.filter((l) => l !== lastLine);
+    lastLine = pick[Math.floor(Math.random() * pick.length)];
+    return lastLine;
   }
 
   function turnPicture(step) {
@@ -196,31 +219,61 @@ export function todayView({ api, state, fmt, go }) {
     if (list.length < 2) return;
     pictureTurn += step;
     if (reducedMotion()) return paintPicture();
-    // She ducks down behind the card's edge, and the next one pops up once it has loaded.
-    const out = buddyImg.animate([{ translate: '0 0', opacity: 1 }, { translate: '0 24px', opacity: 0 }], { duration: 160, easing: 'ease-in', fill: 'forwards' });
+    // She ducks down behind the card's edge, and the next one pops up once it has loaded,
+    // with something to say.
+    const out = live.el.animate([{ translate: '0 0', opacity: 1 }, { translate: '0 24px', opacity: 0 }], { duration: 160, easing: 'ease-in', fill: 'forwards' });
     out.finished.then(
       () => {
         paintPicture();
         const show = () => {
           out.cancel();
-          buddyImg.animate([{ translate: '0 28px', scale: 0.92, opacity: 0 }, { translate: '0 -6px', scale: 1.02, opacity: 1, offset: 0.6 }, { translate: '0 0', scale: 1, opacity: 1 }], {
+          live.el.animate([{ translate: '0 28px', scale: 0.92, opacity: 0 }, { translate: '0 -6px', scale: 1.02, opacity: 1, offset: 0.6 }, { translate: '0 0', scale: 1, opacity: 1 }], {
             duration: 520,
             easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)',
           });
+          live.say(line());
         };
-        if (buddyImg.complete) show();
+        if (live.loaded) show();
         else {
-          buddyImg.addEventListener('load', show, { once: true });
-          buddyImg.addEventListener('error', () => out.cancel(), { once: true });
+          live.img.addEventListener('load', show, { once: true });
+          live.img.addEventListener('error', () => out.cancel(), { once: true });
         }
       },
       () => {},
     );
   }
 
+  // On arrival she waves hello, by name.
+  live.img.addEventListener(
+    'load',
+    () =>
+      setTimeout(() => {
+        if (!el.isConnected) return;
+        live.wave();
+        const n = userName();
+        lastLine = n ? `Hi, ${n}!` : 'Hi there!';
+        live.say(lastLine);
+      }, 420),
+    { once: true },
+  );
+
+  // She leans a little toward the pointer, anywhere on the page.
+  let leanFrame = 0;
+  el.addEventListener('pointermove', (e) => {
+    if (leanFrame) return;
+    leanFrame = requestAnimationFrame(() => {
+      leanFrame = 0;
+      live.lean(e.clientX, e.clientY);
+    });
+  });
+  el.addEventListener('pointerleave', () => live.lean(null));
+
   function paintHead(now) {
     const d = new Date(now);
-    setText(hello, greeting(d.getHours()));
+    const who = userName();
+    setText(helloWord, who ? `${greeting(d.getHours())}, ` : greeting(d.getHours()));
+    setText(helloName, who);
+    helloName.hidden = !who;
     setText(date, dateFmt.format(d));
     const { pausedUntil, quiet: q } = s.settings;
     const paused = pausedUntil != null && pausedUntil > now;
@@ -421,6 +474,7 @@ export function todayView({ api, state, fmt, go }) {
     },
     destroy() {
       window.removeEventListener('storage', onStorage);
+      live.destroy();
     },
   };
 }

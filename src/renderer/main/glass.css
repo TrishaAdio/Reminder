@@ -358,3 +358,27 @@
 .glass .mini-screen {
   border-radius: 8px;
 }
+
+/* ── Setup: the option cards and the name box are glass too ────────────── */
+
+.glass .setup-look,
+.glass .setup-chip,
+.glass .setup-input {
+  background:
+    var(--glass-grain),
+    linear-gradient(180deg, var(--glass-sheen), transparent 40%),
+    var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.glass .setup-preview-box {
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-depth);
+}
+
+.glass .text-box {
+  border-radius: 999px;
+}
