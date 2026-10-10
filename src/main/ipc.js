@@ -3,6 +3,7 @@
 const { app, dialog, ipcMain, nativeTheme, shell } = require('electron');
 const { PRESETS, SOUNDS, ICONS, fromPreset, duplicate, applyPatch } = require('./reminders');
 const { usesMaterial } = require('./main-window');
+const { BUILTIN_PICTURES, MAX_PICTURES } = require('./store');
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const POSITIONS = ['top', 'top-right', 'bottom-right', 'center'];
@@ -44,6 +45,8 @@ function registerIpc({ store, engine, popup, updates, env, mainWindow, ducker })
       version: app.getVersion(),
       material: usesMaterial(store.data.settings.look),
       canFade: ducker.supported,
+      builtinPictures: BUILTIN_PICTURES,
+      maxPictures: MAX_PICTURES,
     },
   });
 

@@ -8,16 +8,25 @@ const { AUDIO_EXT, upgrade } = require('./reminders');
 
 const IMAGE_EXT = new Set(['.png', '.webp', '.gif', '.jpg', '.jpeg']);
 
-// Bundled in assets/companions; shown until someone removes them.
+// Bundled in assets/companions; shown until someone removes them. `set` is the release batch
+// a picture arrived in, so people who already have a list get each new batch exactly once.
 const BUILTIN_COMPANIONS = [
-  { file: 'yor-red-sweater.webp', name: 'Yor in a red sweater' },
-  { file: 'rize.webp', name: 'Rize' },
-  { file: 'yor-smile.webp', name: 'Yor smiling' },
-  { file: 'yor-sun-hat.webp', name: 'Yor in a sun hat' },
-  { file: 'yor-cat.webp', name: 'Yor holding a cat' },
-  { file: 'yor-cat-shop.webp', name: 'Yor with a cat' },
-].map((c) => ({ ...c, builtin: true }));
-const MAX_COMPANIONS = 24;
+  { file: 'yor-red-sweater.webp', name: 'Yor in a red sweater', set: 1 },
+  { file: 'rize.webp', name: 'Rize', set: 1 },
+  { file: 'yor-smile.webp', name: 'Yor smiling', set: 1 },
+  { file: 'yor-sun-hat.webp', name: 'Yor in a sun hat', set: 1 },
+  { file: 'yor-cat.webp', name: 'Yor holding a cat', set: 1 },
+  { file: 'yor-cat-shop.webp', name: 'Yor with a cat', set: 1 },
+  { file: 'yor-sly-smile.webp', name: 'Yor with a sly smile', set: 2 },
+  { file: 'yor-hands-on-hips.webp', name: 'Yor with her hands on her hips', set: 2 },
+  { file: 'yor-sitting.webp', name: 'Yor sitting', set: 2 },
+  { file: 'yor-blue-dress.webp', name: 'Yor in a blue dress', set: 2 },
+  { file: 'yor-flustered.webp', name: 'Yor, flustered', set: 2 },
+  { file: 'ponytail.webp', name: 'Tying a ponytail', set: 2 },
+].map(({ set, ...c }) => ({ ...c, builtin: true, set }));
+const BUILTIN_SET = Math.max(...BUILTIN_COMPANIONS.map((c) => c.set));
+const MAX_COMPANIONS = 30;
+const entry = ({ set, ...c }) => c;
 
 const DEFAULT_SETTINGS = {
   defaultWait: 2,
@@ -30,8 +39,8 @@ const DEFAULT_SETTINGS = {
   quiet: { enabled: false, from: '22:00', to: '07:00' },
   pausedUntil: null,
   companionOn: true,
-  companions: BUILTIN_COMPANIONS,
-  builtinCompanions: 1,
+  companions: BUILTIN_COMPANIONS.map(entry),
+  builtinCompanions: BUILTIN_SET,
 };
 
 class Store {
@@ -51,10 +60,14 @@ class Store {
       const parsed = JSON.parse(await fsp.readFile(this.file, 'utf8'));
       const settings = { ...DEFAULT_SETTINGS, ...parsed.settings };
       settings.quiet = { ...DEFAULT_SETTINGS.quiet, ...parsed.settings?.quiet };
-      // 1.2.0 saved an empty list; give those users the built-in pictures once.
-      if (!parsed.settings?.builtinCompanions) {
-        settings.companions = [...BUILTIN_COMPANIONS, ...(parsed.settings?.companions ?? [])];
-        settings.builtinCompanions = 1;
+      // Each batch of built-in pictures is handed out once (1.2.0 saved an empty list, so
+      // those users get the first batch too). Pictures someone removed stay removed.
+      const had = parsed.settings?.builtinCompanions ?? 0;
+      if (had < BUILTIN_SET) {
+        const list = parsed.settings?.companions ?? [];
+        const fresh = BUILTIN_COMPANIONS.filter((b) => b.set > had && !list.some((c) => c.builtin && c.file === b.file)).map(entry);
+        settings.companions = [...list.filter((c) => c.builtin), ...fresh, ...list.filter((c) => !c.builtin)];
+        settings.builtinCompanions = BUILTIN_SET;
       }
       settings.companions = structuredClone(settings.companions);
       this.data = {
@@ -122,7 +135,7 @@ class Store {
 
   restoreBuiltinCompanions() {
     const list = this.data.settings.companions;
-    const missing = BUILTIN_COMPANIONS.filter((b) => !list.some((c) => c.builtin && c.file === b.file));
+    const missing = BUILTIN_COMPANIONS.filter((b) => !list.some((c) => c.builtin && c.file === b.file)).map(entry);
     list.unshift(...missing);
     return missing.length;
   }
@@ -137,3 +150,5 @@ class Store {
 }
 
 module.exports = Store;
+module.exports.BUILTIN_PICTURES = BUILTIN_COMPANIONS.length;
+module.exports.MAX_PICTURES = MAX_COMPANIONS;

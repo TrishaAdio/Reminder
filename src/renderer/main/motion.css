@@ -7,6 +7,7 @@
 .row:hover .tile .icon,
 .coming-row:hover .tile .icon,
 .preset:hover .tile .icon,
+.stat:hover .tile .icon,
 .editor-head .tile:hover .icon {
   animation: wiggle 560ms var(--release-easing) both;
 }
@@ -111,6 +112,26 @@
 
 @keyframes glow {
   50% { opacity: 0.45; }
+}
+
+/* The picture in the hero breathes a little, and leans up when the pointer comes near. */
+.hero-buddy-img {
+  animation: buddy-breathe 4.2s ease-in-out infinite alternate;
+  transition: translate var(--release-duration) var(--release-easing);
+}
+
+.hero:hover .hero-buddy-img {
+  translate: 0 -4px;
+}
+
+.hero-buddy:active .hero-buddy-img {
+  translate: 0 2px;
+  transition-duration: var(--press-duration, 120ms);
+}
+
+@keyframes buddy-breathe {
+  from { scale: 1 1; }
+  to { scale: 1.012 1.024; }
 }
 
 .dot {
@@ -234,6 +255,7 @@
 /* Idle loops and shimmer rest while the window isn't in use. */
 .idle .badge-dot::after,
 .idle .hero .ring-center .tile,
+.idle .hero-buddy-img,
 .idle .now-line::after,
 .idle .credit-heart svg,
 .idle .credit-name {
@@ -245,6 +267,8 @@
   .coming-row:hover .tile .icon,
   .preset:hover .tile .icon,
   .editor-head .tile:hover .icon,
+  .stat:hover .tile .icon,
+  .hero-buddy-img,
   .button.primary:hover::after,
   .badge-dot::after,
   .hero .ring-center .tile,
@@ -259,6 +283,8 @@
   .button.primary:hover .icon,
   .dot:hover,
   .buddy-thumb:hover img,
+  .hero:hover .hero-buddy-img,
+  .hero-buddy:active .hero-buddy-img,
   .credit-pill:hover {
     translate: none;
     rotate: none;

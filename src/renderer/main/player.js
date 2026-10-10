@@ -88,10 +88,15 @@ export function createPlayer() {
       audio = el;
       key = playKey;
       emit();
-      const metered = graph(el);
+      // Once an element feeds the meter, it is only heard through the AudioContext; a context
+      // that won't run (no device yet, device switched) would leave the preview silent. Then
+      // the sound plays directly instead, just without the live meter.
+      const running = warm() && (await Promise.race([ctx.resume().then(() => ctx.state === 'running', () => false), new Promise((r) => setTimeout(() => r(false), 300))]));
+      // Another preview started meanwhile: this one simply steps aside (not an error).
+      if (audio !== el) return true;
+      const metered = running && graph(el);
       el.addEventListener('ended', () => audio === el && stop(), { once: true });
       try {
-        await ctx?.resume();
         await el.play();
         if (metered) loop();
         return true;

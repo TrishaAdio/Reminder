@@ -1,7 +1,7 @@
 {
   "name": "remindani",
   "productName": "RemindAni",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "description": "Reminders that are impossible to miss and a pleasure to dismiss.",
   "main": "src/main/index.js",
   "author": "RemindAni",
@@ -22,7 +22,8 @@
     "dist": "npm run audio-helper && electron-builder --win nsis --x64 --publish never",
     "release": "node scripts/release.mjs",
     "publish": "npm run audio-helper && electron-builder --win nsis --x64 --publish always",
-    "audio-helper": "node scripts/build-audio-helper.mjs"
+    "audio-helper": "node scripts/build-audio-helper.mjs",
+    "stats": "node scripts/code-stats.mjs"
   },
   "dependencies": {
     "electron-updater": "6.8.9"

@@ -28,6 +28,8 @@ const PATHS = {
   retry: '<path d="M19.25 12a7.25 7.25 0 1 1-2.12-5.13"/><path d="M19.25 4.75v4.5h-4.5"/>',
   alert: '<circle cx="12" cy="12" r="8.25"/><path d="M12 7.75v4.75"/><path d="M12 16.1v.15"/>',
   folder: '<path d="M3.75 7.25c0-.83.67-1.5 1.5-1.5h4l2 2h7.5c.83 0 1.5.67 1.5 1.5v8.5c0 .83-.67 1.5-1.5 1.5H5.25c-.83 0-1.5-.67-1.5-1.5Z"/>',
+  bell: '<path d="M6.25 16.75V11a5.75 5.75 0 0 1 11.5 0v5.75l1.5 1.5H4.75Z"/><path d="M10 20.25a2.1 2.1 0 0 0 4 0"/>',
+  clock: '<circle cx="12" cy="12" r="8.25"/><path d="M12 7.5V12l3 2"/>',
 };
 
 export function icon(name, className = 'icon') {

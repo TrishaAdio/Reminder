@@ -3,6 +3,7 @@ import { toggle, segmented, timeField } from '../controls.js';
 import { flip } from '../flip.js';
 import { icon, appMark } from '../../shared/icons.js';
 import { updatePanel } from './update-panel.js';
+import { creditFooter } from './footer.js';
 
 const field = (label, control, sub) =>
   h(
@@ -118,8 +119,8 @@ export function settingsView({ api, state, fmt, player, actions }) {
     }
     strip.hidden = !list.length;
     companionToggle.set(s.settings.companionOn);
-    addPictures.disabled = list.length >= 24;
-    restorePictures.hidden = list.filter((c) => c.builtin).length >= 6;
+    addPictures.disabled = list.length >= s.env.maxPictures;
+    restorePictures.hidden = list.filter((c) => c.builtin).length >= s.env.builtinPictures;
     if (!list.length && !companionNote.textContent) setText(companionNote, 'Transparent PNGs look best.');
     else if (list.length && companionNote.textContent === 'Transparent PNGs look best.') setText(companionNote, '');
   }
@@ -226,6 +227,8 @@ export function settingsView({ api, state, fmt, player, actions }) {
     ),
     group('Keyboard', 'keys', shortcut('New reminder', 'Ctrl+N'), shortcut('Today, Reminders, Settings', 'Ctrl+1, 2, 3'), shortcut('Back', 'Esc'), shortcut('Close this window', 'Ctrl+W'), shortcut('On a reminder card', 'Enter = Done, Esc, 2 or 3 = wait')),
     about,
+    // The credit lives here, at the foot of Settings, under About.
+    creditFooter(),
   );
 
   function paintQuiet() {

@@ -9,21 +9,72 @@
 
 /* ── Today ─────────────────────────────────────────── */
 
+.view.today {
+  max-width: 880px;
+}
+
+/* Greeting, date and a status chip on the left; Pause and New on the right. */
+.today-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s4);
+  margin-top: var(--s5);
+}
+
+.today-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: 2px;
+  color: var(--text-2);
+}
+
+.today-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.today-chip[data-kind='paused'],
+.today-chip[data-kind='quiet'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.today-tools {
+  display: flex;
+  flex: none;
+  gap: var(--s2);
+}
+
+/* The hero sits a little lower than the head so the picture has room to peek over its edge. */
 .hero {
   display: grid;
   grid-template-columns: 136px minmax(0, 1fr);
   align-items: center;
   gap: var(--s8);
-  margin-top: var(--s6);
+  margin-top: var(--s8);
   padding: var(--s7) var(--s8);
   border-radius: 28px;
+  transition: box-shadow var(--exit-duration) var(--exit-easing);
 }
 
-.hero-try {
-  position: absolute;
-  z-index: 1;
-  top: var(--s5);
-  right: var(--s5);
+/* A wash of the reminder's own tint from the ring's corner. */
+.hero[class*='tint-'] {
+  background:
+    radial-gradient(130% 150% at 0% 0%, oklch(var(--ink-l) var(--ink-c) var(--hue) / 0.16), transparent 58%),
+    var(--card);
+}
+
+.hero.has-buddy {
+  padding-right: 252px;
 }
 
 .hero-eyebrow {
@@ -51,6 +102,9 @@
 .hero-actions {
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
   width: max-content;
   margin-top: var(--s4);
 }
@@ -60,7 +114,50 @@
 }
 
 .hero:has(.stretched:not([hidden])):hover {
-  background: color-mix(in srgb, var(--card) 97%, var(--text));
+  box-shadow: var(--highlight), var(--shadow-lift);
+}
+
+/* The picture stands in the card's right side, feet on its bottom edge, head over its top. */
+.hero-buddy {
+  position: absolute;
+  z-index: 1;
+  right: var(--s6);
+  bottom: 0;
+  width: 212px;
+  height: calc(100% + 30px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+
+.hero-buddy::before {
+  content: '';
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 0;
+  height: 78%;
+  border-radius: 50% 50% 0 0;
+  background: radial-gradient(closest-side, oklch(var(--ink-l) var(--ink-c) var(--hue, 240) / 0.3), transparent);
+  pointer-events: none;
+}
+
+.hero-buddy-img {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.18));
+  -webkit-user-drag: none;
+}
+
+.hero-buddy:focus-visible {
+  outline-offset: -2px;
+  border-radius: 16px;
 }
 
 .ring {
@@ -126,9 +223,46 @@
   display: none;
 }
 
+/* Three numbers for today. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s3);
+  margin-top: var(--s4);
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-width: 0;
+  padding: var(--s4) var(--s5);
+}
+
+.stat-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stat-value {
+  line-height: 26px;
+}
+
+.stat-label {
+  font-weight: 600;
+}
+
+.stat-sub {
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .timeline {
   margin-top: var(--s4);
-  padding: var(--s5) var(--s6) var(--s4);
+  padding: var(--s5) var(--s6);
 }
 
 .card-head {
@@ -144,14 +278,14 @@
 .track {
   position: relative;
   margin-top: var(--s4);
-  height: calc(var(--lanes, 1) * 14px + 12px);
+  height: calc(var(--lanes, 1) * 16px + 14px);
   border-radius: var(--r-control);
   background: var(--raised);
   overflow: hidden;
 }
 
 .track:has(.lanes:empty) {
-  height: 26px;
+  height: 28px;
 }
 
 .past {
@@ -168,11 +302,31 @@
   background: repeating-linear-gradient(135deg, var(--fill-press) 0 2px, transparent 2px 7px);
 }
 
+/* Faint hour lines every three hours, a little stronger every six. */
+.hour-ticks {
+  position: absolute;
+  inset: 0;
+}
+
+.hour-tick {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: var(--separator);
+}
+
+.hour-tick.major {
+  top: 0;
+  bottom: 0;
+  background: var(--fill-press);
+}
+
 .lanes {
   position: absolute;
-  inset: 6px 8px;
+  inset: 7px 8px;
   display: grid;
-  grid-template-rows: repeat(var(--lanes, 1), 14px);
+  grid-template-rows: repeat(var(--lanes, 1), 16px);
 }
 
 .lane {
@@ -182,11 +336,12 @@
 .dot {
   position: absolute;
   top: 3px;
-  width: 8px;
-  height: 8px;
-  margin-left: -4px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
   border-radius: 50%;
   background: var(--ink);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--raised) 60%, transparent);
 }
 
 .now {
@@ -205,19 +360,86 @@
 
 .axis {
   position: relative;
-  height: 14px;
+  height: 18px;
   margin-top: var(--s2);
   color: var(--text-2);
 }
 
-.axis span {
+.axis-label,
+.now-tag {
   position: absolute;
+  top: 1px;
   transform: translateX(-50%);
   white-space: nowrap;
 }
 
-.axis span:first-child { transform: none; }
-.axis span:last-child { transform: translateX(-100%); }
+.axis-label {
+  transition: opacity var(--exit-duration) var(--exit-easing);
+}
+
+.axis-label.axis-start { transform: none; }
+.axis-label.axis-end { transform: translateX(-100%); }
+.axis-label.covered { opacity: 0; }
+
+/* The time right now, on the axis under the line. */
+.now-tag {
+  top: -1px;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--inverse);
+  color: var(--on-inverse);
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.now-tag[data-edge='start'] { transform: none; }
+.now-tag[data-edge='end'] { transform: translateX(-100%); }
+
+/* Key: one chip per reminder, in its colour, with how many are left today. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: var(--s4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--fill);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.legend-item:hover {
+  background: var(--fill-hover);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.legend-name {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.legend-count {
+  color: var(--text-2);
+  font-size: 12px;
+}
 
 .coming {
   margin: 0;
@@ -270,6 +492,22 @@
 
 .coming-rel {
   color: var(--text-2);
+}
+
+/* Narrow windows: a smaller picture, and the head's buttons drop their words' room. */
+@media (max-width: 940px) {
+  .hero.has-buddy {
+    padding-right: 180px;
+  }
+
+  .hero-buddy {
+    right: var(--s4);
+    width: 150px;
+  }
+
+  .stat {
+    padding: var(--s3) var(--s4);
+  }
 }
 
 /* ── Reminders list ─────────────────────────────────── */
