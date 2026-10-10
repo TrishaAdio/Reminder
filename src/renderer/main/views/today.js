@@ -2,6 +2,7 @@ import { h, setText } from '../dom.js';
 import { icon, tintClass } from '../../shared/icons.js';
 import { animate, reducedMotion } from '../../shared/spring.js';
 import { livePicture } from '../live-picture.js';
+import { morphText } from '../morph.js';
 
 const R = 60;
 const C = 2 * Math.PI * R;
@@ -62,7 +63,10 @@ function ring() {
         animate(arc, [{ strokeDashoffset: C * (1 - shown) }, { strokeDashoffset: C * (1 - target) }], 'enter');
         animate(head, [{ transform: `rotate(${shown * 360}deg)` }, { transform: `rotate(${target * 360}deg)` }], 'enter');
       } else {
-        arc.setAttribute('stroke-dashoffset', String(C * (1 - target)));
+        // An inline style, not the attribute: the arrival animation commits an inline style,
+        // which would otherwise pin the arc where it landed. Each second's step glides in
+        // over that second (screens.css), so the ring flows instead of ticking.
+        arc.style.strokeDashoffset = String(C * (1 - target));
         head.style.transform = `rotate(${target * 360}deg)`;
       }
       shown = target;
@@ -83,11 +87,7 @@ function stat({ iconName, tint, label }) {
   return {
     el,
     set(v, subText = '') {
-      const text = String(v);
-      if (value.textContent && value.textContent !== text && !reducedMotion()) {
-        value.animate([{ scale: 1 }, { scale: 1.18, offset: 0.35 }, { scale: 1 }], { duration: 420, easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)' });
-      }
-      setText(value, text);
+      morphText(value, String(v));
       setText(sub, subText);
       sub.hidden = !subText;
     },
@@ -314,7 +314,7 @@ export function todayView({ api, state, fmt, go }) {
       }
       setText(eyebrow, paused ? 'Do not disturb' : 'Quiet hours');
       setText(name, '');
-      setText(big, paused ? 'Paused' : 'Quiet');
+      morphText(big, paused ? 'Paused' : 'Quiet');
       setText(sub, `Until ${fmt.time(paused ? pausedUntil : quietEnd(now, q))}. Reminders that come up meanwhile are skipped.`);
       r.set(0, false);
       return;
@@ -327,7 +327,7 @@ export function todayView({ api, state, fmt, go }) {
       }
       setText(eyebrow, 'Up next');
       setText(name, '');
-      setText(big, s.reminders.length ? 'Nothing on' : 'Nothing yet');
+      morphText(big, s.reminders.length ? 'Nothing on' : 'Nothing yet');
       setText(sub, s.reminders.length ? 'Every reminder is switched off.' : 'Pick a preset and your first reminder is set in one click.');
       r.set(0, false);
       return;
@@ -346,7 +346,8 @@ export function todayView({ api, state, fmt, go }) {
     }
     setText(eyebrow, st.status === 'snoozed' ? 'Back after a wait' : 'Up next');
     setText(name, rem.name.trim() || 'Reminder');
-    setText(big, capitalize(fmt.relative(st.nextAt, now)));
+    // Counting down, so new digits arrive from above.
+    morphText(big, capitalize(fmt.relative(st.nextAt, now)), { direction: -1 });
     const sch = rem.schedule;
     setText(sub, `${fmt.time(st.nextAt)} · ${sch.type === 'daily' ? capitalize(fmt.days(sch.days)) : fmt.schedule(sch)}`);
     const start = ringStart(rem, st);
@@ -371,11 +372,11 @@ export function todayView({ api, state, fmt, go }) {
     const f = frac(now);
     past.style.transform = `scaleX(${f})`;
     nowLine.style.transform = `translateX(${f * 100}%)`;
-    setText(count, items.length ? `${items.length} more today` : 'Nothing else today');
+    morphText(count, items.length ? `${items.length} more today` : 'Nothing else today', { direction: -1 });
     timeline.setAttribute('aria-label', `Your day: ${items.length ? `${items.length} more reminders` : 'nothing else scheduled'}`);
 
     // "Now" sits on the axis under the line; hour labels it would cover step aside.
-    setText(nowTag, fmt.time(now));
+    morphText(nowTag, fmt.time(now));
     nowTag.style.left = `${f * 100}%`;
     nowTag.dataset.edge = f < 0.05 ? 'start' : f > 0.95 ? 'end' : '';
     for (const label of axisLabels) label.classList.toggle('covered', Math.abs(Number(label.dataset.at) - f) < 0.075);

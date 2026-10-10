@@ -1,7 +1,7 @@
 import { h, setText } from '../dom.js';
 import { segmented } from '../controls.js';
 import { icon, tintClass, appMark } from '../../shared/icons.js';
-import { animate, reducedMotion } from '../../shared/spring.js';
+import { animate, reducedMotion, spring, fadeParts, FADE } from '../../shared/spring.js';
 import { livePicture } from '../live-picture.js';
 
 // First-time setup: welcome, your name, your look, a first reminder or two, done. The live
@@ -249,8 +249,13 @@ export function onboardingView({ api, state, fmt, done }) {
       old.inert = true;
       old.classList.add('leaving');
       const dx = back ? 28 : -28;
-      animate(old, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: `translateX(${dx}px)` }], 'exit').then(() => old.remove());
-      animate(current, [{ opacity: 0, transform: `translateX(${-dx}px)` }, { opacity: 1, transform: 'none' }], 'layout');
+      // Steps slide as a whole but fade piece by piece, so glass options stay frosted.
+      const fade = (el, from, to, timing) => Promise.all(fadeParts(el).map((p) => p.animate([{ opacity: from }, { opacity: to }], { ...timing, fill: to ? 'backwards' : 'forwards' }).finished)).catch(() => {});
+      const calm = reducedMotion();
+      if (!calm) animate(old, [{ transform: 'none' }, { transform: `translateX(${dx}px)` }], 'exit');
+      fade(old, 1, 0, calm ? FADE : spring('exit')).then(() => old.remove());
+      if (!calm) animate(current, [{ transform: `translateX(${-dx}px)` }, { transform: 'none' }], 'layout');
+      fade(current, 0, 1, calm ? FADE : spring('smooth'));
     }
     requestAnimationFrame(() => (current.focusFirst ? current.focusFirst() : current.querySelector('.setup-next')?.focus()));
   }
