@@ -146,12 +146,40 @@
   border-radius: 32px;
 }
 
-.glass .hero:has(.stretched:not([hidden])):hover {
+/* The reminder's tint washes in from the ring's corner, under the frost. */
+.glass .hero[class*='tint-'] {
   background:
     var(--glass-grain),
     linear-gradient(180deg, var(--glass-sheen), transparent 38%),
+    radial-gradient(130% 150% at 0% 0%, oklch(var(--ink-l) var(--ink-c) var(--hue) / 0.2), transparent 58%),
     radial-gradient(120% 80% at 100% 100%, var(--glass-glow), transparent 55%),
-    var(--glass-fill-strong);
+    var(--glass-fill);
+}
+
+.glass .hero:has(.stretched:not([hidden])):hover {
+  box-shadow: var(--glass-depth), var(--shadow-lift);
+}
+
+.glass .today-hello {
+  font-size: 34px;
+  line-height: 41px;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+}
+
+.glass .legend-item,
+.glass .today-chip {
+  background: var(--glass-fill-strong);
+  box-shadow: inset 0 0 0 1px var(--separator);
+}
+
+.glass .legend-item:hover {
+  background: var(--fill-hover);
+}
+
+.glass .today-chip[data-kind='paused'],
+.glass .today-chip[data-kind='quiet'] {
+  background: var(--accent-soft);
 }
 
 /* ── Title bar: a floating glass capsule with a sliding lens ─────────── */

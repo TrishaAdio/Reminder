@@ -1,6 +1,8 @@
 // Used by .github/workflows/audio-fade-test.yml: drives RemindAni-Audio.exe against a real
 // app that is playing sound (a looping PowerShell SoundPlayer), and checks that it fades that
 // app down and back up smoothly, recovers after being killed mid-fade, and restores on quit.
+// It also checks RemindAni's own sound is never faded: the player is a child of this script, so
+// with --pid set to this script it counts as "own", like Chromium's audio process does.
 import { spawn, execSync } from 'node:child_process';
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
@@ -14,8 +16,8 @@ const check = (ok, what) => {
   if (!ok) failed++;
 };
 
-function helper() {
-  const child = spawn(exe, ['--exclude', 'node', '--state', state], { stdio: ['pipe', 'pipe', 'inherit'], windowsHide: true });
+function helper(args = ['--exclude', 'node', '--state', state]) {
+  const child = spawn(exe, args, { stdio: ['pipe', 'pipe', 'inherit'], windowsHide: true });
   // Every line the helper has said, in order; waits look from a given position onwards.
   const history = [];
   const waiters = [];
@@ -54,12 +56,13 @@ function helper() {
     const end = await until(/^listed$/, from);
     return history.slice(from, end).filter((l) => l.startsWith('session '));
   };
+  const row = async () => (await sessions()).find((l) => /^session powershell /i.test(l));
   const volume = async () => {
-    const row = (await sessions()).find((l) => /^session powershell /i.test(l));
-    return row ? Number(row.split(' ')[2]) : null;
+    const r = await row();
+    return r ? Number(r.split(' ')[2]) : null;
   };
   const exited = new Promise((r) => child.on('exit', (code) => r(code)));
-  return { child, send, until, sessions, volume, exited, history };
+  return { child, send, until, sessions, volume, row, exited, history };
 }
 
 rmSync(state, { force: true });
@@ -127,6 +130,34 @@ await c.until(/^ready$/);
 check(Math.abs((await c.volume()) - start) < 0.001, 'volume was put back on quit');
 c.child.stdin.end();
 await c.exited;
+
+// 5. Own sound (found through the process tree, not the name) is left alone while ducked.
+const ownArgs = ['--pid', String(process.pid), '--state', state];
+const d = helper(ownArgs);
+await d.until(/^ready$/);
+check(/ own$/.test((await d.row()) ?? ''), 'a child of RemindAni counts as its own sound');
+d.send('duck 300');
+await sleep(800);
+check(Math.abs((await d.volume()) - start) < 0.001, 'its own sound kept its volume while others are faded');
+d.send('restore 0');
+await d.until(/^restored$/);
+d.child.stdin.end();
+await d.exited;
+
+// 6. Own slider left at silence (by anything) is put back as the helper starts.
+const e = helper();
+await e.until(/^ready$/);
+e.send('duck 0');
+await sleep(400);
+check((await e.volume()) < 0.001, 'player silenced to set up the heal check');
+execSync(`taskkill /F /PID ${e.child.pid}`);
+await sleep(500);
+rmSync(state, { force: true });
+const f = helper(ownArgs);
+await f.until(/^own sound back on/);
+check((await f.volume()) > 0.99, 'own slider put back at full');
+f.child.stdin.end();
+await f.exited;
 
 player.kill();
 console.log(failed ? `${failed} check(s) failed` : 'all checks passed');

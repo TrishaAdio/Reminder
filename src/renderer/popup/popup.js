@@ -225,7 +225,14 @@ function createSound() {
           // Repeats are softer and spaced out: a reminder, not an alarm.
           audio.addEventListener('ended', () => (timer = setTimeout(() => start(p.volume * 0.45), 9000)), { once: true });
         }
-        audio.play().catch(() => {});
+        // The audio device can still be waking up (first sound since start, a device that just
+        // changed): try again a couple of times rather than staying silent.
+        const el = audio;
+        const attempt = (left) =>
+          el.play().catch(() => {
+            if (left > 0 && mine === token && audio === el) setTimeout(() => attempt(left - 1), 400);
+          });
+        attempt(2);
       };
       start(p.volume);
     },

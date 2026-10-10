@@ -6,6 +6,15 @@
 //   duck <ms>       fade every playing app to 0 over <ms>; apps that start playing while
 //                   ducked are faded down too
 //   restore <ms>    fade everything back to its original volume over <ms>, then say "restored"
+//   heal            put RemindAni's own slider back if it sits at silence or is muted
+//                   (also done on start and on every duck)
+// RemindAni's own sound is recognised three ways, so it is never faded even when one of them
+// fails: the process name (--exclude), the executable in the session id (--exe), and the process
+// tree (--pid: RemindAni's main process and everything it started, which includes the
+// separate audio process Chromium plays all of RemindAni's sound from). If RemindAni's own mixer
+// slider was left at silence (or muted), it is put back at full, because a reminder that
+// can't be heard is worse than anything else this helper could do.
+//
 // It exits when stdin closes, restoring first if needed (RemindAni closes it after "restored",
 // and the pipe also closes if RemindAni quits or crashes). While ducked,
 // the original volumes are also kept in the --state file, so if this helper is ever killed
@@ -100,6 +109,83 @@ namespace RemindAni.Audio
     {
         [PreserveSig] int SetMasterVolume(float level, ref Guid context);
         [PreserveSig] int GetMasterVolume(out float level);
+        [PreserveSig] int SetMute(int mute, ref Guid context);
+        [PreserveSig] int GetMute(out int mute);
+    }
+
+    // ── Process list (Toolhelp), to find RemindAni's child processes without opening them ──
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct ProcessEntry
+    {
+        public uint Size;
+        public uint Usage;
+        public uint ProcessId;
+        public IntPtr DefaultHeapId;
+        public uint ModuleId;
+        public uint Threads;
+        public uint ParentProcessId;
+        public int PriorityClassBase;
+        public uint Flags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string ExeFile;
+    }
+
+    static class Toolhelp
+    {
+        const uint SnapProcess = 2;
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern IntPtr CreateToolhelp32Snapshot(uint flags, uint processId);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "Process32FirstW")]
+        static extern bool First(IntPtr snapshot, ref ProcessEntry entry);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "Process32NextW")]
+        static extern bool Next(IntPtr snapshot, ref ProcessEntry entry);
+
+        [DllImport("kernel32.dll")]
+        static extern bool CloseHandle(IntPtr handle);
+
+        // The given process and every process below it.
+        public static HashSet<int> Tree(int root)
+        {
+            var tree = new HashSet<int>();
+            if (root <= 0) return tree;
+            tree.Add(root);
+            var children = new Dictionary<int, List<int>>();
+            IntPtr snapshot = CreateToolhelp32Snapshot(SnapProcess, 0);
+            if (snapshot == IntPtr.Zero || snapshot == new IntPtr(-1)) return tree;
+            try
+            {
+                var entry = new ProcessEntry();
+                entry.Size = (uint)Marshal.SizeOf(typeof(ProcessEntry));
+                for (bool more = First(snapshot, ref entry); more; more = Next(snapshot, ref entry))
+                {
+                    int pid = (int)entry.ProcessId;
+                    int parent = (int)entry.ParentProcessId;
+                    if (pid == parent) continue;
+                    List<int> list;
+                    if (!children.TryGetValue(parent, out list)) children[parent] = list = new List<int>();
+                    list.Add(pid);
+                }
+            }
+            finally
+            {
+                CloseHandle(snapshot);
+            }
+            var queue = new Queue<int>();
+            queue.Enqueue(root);
+            while (queue.Count > 0)
+            {
+                List<int> list;
+                if (!children.TryGetValue(queue.Dequeue(), out list)) continue;
+                foreach (int child in list)
+                {
+                    if (tree.Add(child)) queue.Enqueue(child);
+                }
+            }
+            return tree;
+        }
     }
 
     // ── One app's session on one output device ─────────────────────────────────────────────
@@ -109,6 +195,7 @@ namespace RemindAni.Audio
         public string Key;        // instance id: unique while the session lives
         public string Identity;   // session id: stable for the app, used by the state file
         public string Process;
+        public bool Own;          // RemindAni's own sound: never faded
         public ISimpleAudioVolume Volume;
         public float Original;
         public float From;
@@ -132,6 +219,9 @@ namespace RemindAni.Audio
         static readonly Dictionary<string, Session> tracked = new Dictionary<string, Session>();
         static readonly ConcurrentQueue<string> commands = new ConcurrentQueue<string>();
         static readonly HashSet<string> excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        static readonly List<string> ownExes = new List<string>();
+        static int ownRoot;
+        static HashSet<int> ownTree = new HashSet<int>();
         static readonly Stopwatch clock = Stopwatch.StartNew();
         static string stateFile;
         static string mode = "idle";   // idle | ducked | restoring
@@ -145,11 +235,14 @@ namespace RemindAni.Audio
             for (int i = 0; i + 1 < args.Length; i += 2)
             {
                 if (args[i] == "--exclude") excluded.Add(args[i + 1]);
+                else if (args[i] == "--exe") ownExes.Add("\\" + args[i + 1].ToLowerInvariant() + "%b");
+                else if (args[i] == "--pid") int.TryParse(args[i + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out ownRoot);
                 else if (args[i] == "--state") stateFile = args[i + 1];
             }
             excluded.Add(Process.GetCurrentProcess().ProcessName);
 
             RecoverFromStateFile();
+            HealOwn();
 
             var reader = new Thread(ReadCommands);
             reader.IsBackground = true;
@@ -211,6 +304,7 @@ namespace RemindAni.Audio
                 if (mode != "ducked") duckedAt = now;
                 mode = "ducked";
                 lastScan = now;
+                HealOwn();
                 Capture(now, ms);
                 // Everything already tracked (also mid-restore) heads back down from where it is.
                 foreach (var s in tracked.Values) Fade(s, 0f, now, ms);
@@ -220,12 +314,16 @@ namespace RemindAni.Audio
             {
                 BeginRestore(now, ms);
             }
+            else if (parts[0] == "heal")
+            {
+                HealOwn();
+            }
             else if (parts[0] == "list")
             {
                 // For diagnosis: every app session with its process and current volume.
                 foreach (var s in Sessions(false))
                 {
-                    Say("session " + s.Process + " " + Get(s).ToString("0.000", CultureInfo.InvariantCulture) + (tracked.ContainsKey(s.Key) ? " faded" : ""));
+                    Say("session " + s.Process + " " + Get(s).ToString("0.000", CultureInfo.InvariantCulture) + (s.Own ? " own" : tracked.ContainsKey(s.Key) ? " faded" : ""));
                 }
                 Say("listed");
             }
@@ -281,7 +379,7 @@ namespace RemindAni.Audio
             bool added = false;
             foreach (var found in Sessions(true))
             {
-                if (tracked.ContainsKey(found.Key)) continue;
+                if (found.Own || tracked.ContainsKey(found.Key)) continue;
                 found.Original = Get(found);
                 tracked[found.Key] = found;
                 Fade(found, 0f, now, ms);
@@ -293,6 +391,7 @@ namespace RemindAni.Audio
         static IEnumerable<Session> Sessions(bool activeOnly)
         {
             var list = new List<Session>();
+            ownTree = Toolhelp.Tree(ownRoot);
             IMMDeviceEnumerator devices;
             try
             {
@@ -351,7 +450,6 @@ namespace RemindAni.Audio
             {
                 return null;
             }
-            if (excluded.Contains(process)) return null;
             var volume = control as ISimpleAudioVolume;
             if (volume == null) return null;
             string key = Text(control.GetSessionInstanceIdentifier);
@@ -361,9 +459,52 @@ namespace RemindAni.Audio
             s.Key = key;
             s.Identity = identity ?? key;
             s.Process = process;
+            s.Own = excluded.Contains(process) || ownTree.Contains(pid) || IsOwnExe(s.Identity) || IsOwnExe(key);
             s.Volume = volume;
             s.Start = -1;
             return s;
+        }
+
+        static bool IsOwnExe(string id)
+        {
+            if (id == null) return false;
+            string lower = id.ToLowerInvariant();
+            foreach (string exe in ownExes)
+            {
+                if (lower.Contains(exe)) return true;
+            }
+            return false;
+        }
+
+        // RemindAni's own slider at silence or muted (left there by anything, including an older
+        // version of this helper) means reminders can't be heard: put it back.
+        static void HealOwn()
+        {
+            foreach (var s in Sessions(false))
+            {
+                if (!s.Own) continue;
+                bool fixedIt = false;
+                try
+                {
+                    int muted;
+                    if (s.Volume.GetMute(out muted) == 0 && muted != 0 && s.Volume.SetMute(0, ref Context) == 0) fixedIt = true;
+                }
+                catch
+                {
+                }
+                float level;
+                bool read = false;
+                try
+                {
+                    read = s.Volume.GetMasterVolume(out level) == 0;
+                }
+                catch
+                {
+                    level = 1f;
+                }
+                if (read && level < 0.02f && Set(s, 1f)) fixedIt = true;
+                if (fixedIt) Say("own sound back on (" + s.Process + ")");
+            }
         }
 
         delegate int StringGetter(out IntPtr value);

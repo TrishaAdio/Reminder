@@ -37,9 +37,12 @@ class AudioDucker {
       return null;
     }
     const state = path.join(app.getPath('userData'), 'audio-fade.tsv');
-    // Its own name (RemindAni, or electron while developing) is left out of the fade.
-    const own = path.parse(process.execPath).name;
-    const child = spawn(file, ['--exclude', own, '--state', state], { stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true });
+    // RemindAni's own sound is left out of the fade, recognised by name (RemindAni, or electron
+    // while developing), by its exe in the session id, and by process tree: Chromium plays all
+    // of it from a separate audio process, a child of this one.
+    const exe = path.basename(process.execPath);
+    const args = ['--exclude', path.parse(exe).name, '--exe', exe, '--pid', String(process.pid), '--state', state];
+    const child = spawn(file, args, { stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true });
     child.stdout.setEncoding('utf8');
     let buffer = '';
     child.stdout.on('data', (chunk) => {
@@ -76,10 +79,26 @@ class AudioDucker {
 
   // Fade other apps to silence over `ms`. Calling it again while faded is harmless.
   duck(ms) {
-    if (!this.enabled || !this.supported) return;
+    if (!this.supported) return;
+    // Even with fading off, the helper checks that RemindAni's own mixer slider isn't left at
+    // silence, so the reminder itself can always be heard.
+    if (!this.enabled) return this.healOwn();
     if (this.ducked) return;
     this.ducked = true;
     this.send(`duck ${Math.max(0, Math.round(ms))}`);
+  }
+
+  // Only puts RemindAni's own slider back if it sits at silence or is muted; at most once a minute.
+  healOwn() {
+    const now = Date.now();
+    if (now - (this.healedAt ?? 0) < 60_000) return;
+    this.healedAt = now;
+    if (this.child) return this.send('heal');
+    const child = this.start();
+    if (!child) return;
+    // The helper heals as it starts, then leaves once its pipe is closed.
+    child.stdin.end();
+    this.child = null;
   }
 
   // Fade them back to where they were over `ms`.

@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
 import { reducedMotion } from '../../shared/spring.js';
 
-// "Created with ♥ by Anirban", at the foot of every page. The heart is drawn (not an emoji,
+// "Created with ♥ by Anirban", at the foot of Settings. The heart is drawn (not an emoji,
 // so it looks the same everywhere), beats, and sends out a little burst of hearts when clicked.
 
 const HEART = 'M12 21s-8.5-5.4-8.5-11.4C3.5 6.6 5.8 4.5 8.4 4.5c1.6 0 2.9.8 3.6 2 .7-1.2 2-2 3.6-2 2.6 0 4.9 2.1 4.9 5.1C20.5 15.6 12 21 12 21z';

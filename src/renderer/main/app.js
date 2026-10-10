@@ -10,7 +10,6 @@ import { listView } from './views/list.js';
 import { galleryView } from './views/gallery.js';
 import { editorView } from './views/editor.js';
 import { settingsView } from './views/settings.js';
-import { creditFooter } from './views/footer.js';
 
 installSpringProperties();
 
@@ -71,9 +70,6 @@ const titlebar = h(
   tabs,
 );
 const page = h('main', { class: 'page scroll', id: 'page', role: 'tabpanel' });
-// The credit sits under every page; views go in above it.
-const credit = creditFooter();
-page.append(credit);
 document.body.append(h('div', { class: 'shell' }, titlebar, page), toaster.el);
 
 // Idle loops (floating icon, glowing line, drifting glass backdrop) rest while the window
@@ -90,7 +86,7 @@ function stagger(root) {
   if (reducedMotion()) return;
   const picks = [
     ...root.querySelectorAll(':scope > :not(.back):not([hidden])'),
-    ...root.querySelectorAll('.rows > .row, .coming > li, .gallery > .preset, .rows-card > .field:not([hidden])'),
+    ...root.querySelectorAll('.stats > .stat, .rows > .row, .coming > li, .gallery > .preset, .rows-card > .field:not([hidden])'),
   ];
   const { duration, easing } = spring('enter');
   picks.slice(0, 16).forEach((el, i) => {
@@ -174,7 +170,7 @@ function go(next, { back = false, section = null } = {}) {
     animate(old.el, out, reducedMotion() ? FADE : 'exit').then(() => old.el.remove());
   }
   page.scrollTop = 0;
-  page.insertBefore(view.el, credit);
+  page.append(view.el);
   stagger(view.el);
   if (old) {
     const dx = back ? -32 : 32;
