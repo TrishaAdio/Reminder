@@ -14,18 +14,47 @@ body {
 }
 
 .shell {
-  display: grid;
-  grid-template-rows: 48px minmax(0, 1fr);
+  position: relative;
   height: 100vh;
+  /* The page's scroll position drives the title bar's material (below). */
+  timeline-scope: --page;
 }
 
-/* Title bar: the whole strip drags; Windows overlays the caption buttons on the right. */
+/* Title bar: the whole strip drags; Windows overlays the caption buttons on the right. The
+   page scrolls underneath it, iOS-style: at the top the bar is clear; as content slides under,
+   a frosted bar with a hairline fades in, tied to the scroll position itself (a scroll-driven
+   animation, run by the compositor, so it tracks the finger or wheel exactly). */
 .titlebar {
-  position: relative;
+  position: absolute;
+  z-index: 20;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
   display: flex;
   align-items: center;
   padding: 0 var(--s4);
   -webkit-app-region: drag;
+}
+
+.titlebar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--window) 90%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: inset 0 -1px 0 var(--separator);
+  opacity: 0;
+  pointer-events: none;
+  animation: bar-in linear both;
+  animation-timeline: --page;
+  animation-range: 0 28px;
+}
+
+@keyframes bar-in {
+  to { opacity: 1; }
 }
 
 .brand {
@@ -65,7 +94,7 @@ body {
   border-radius: var(--r-thumb);
   background: var(--thumb);
   box-shadow: var(--shadow-knob);
-  transition: transform var(--layout-duration) var(--layout-easing);
+  /* Moved by a spring follower in JS (spring.js glider), which keeps momentum. */
 }
 
 .tab {
@@ -98,12 +127,16 @@ body {
 
 .page {
   position: relative;
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
+  scroll-timeline: --page block;
+  /* Scrolling to a section stops below the title bar. */
+  scroll-padding-top: 64px;
   /* Short and long pages share one width, so switching tabs never re-centres the content
      when the scrollbar comes or goes. */
   scrollbar-gutter: stable both-edges;
-  padding: var(--s2) var(--s8) var(--s6);
+  padding: calc(48px + var(--s2)) var(--s8) var(--s6);
   /* A column, so a view's footer (the credit on Settings) can sit at the bottom. */
   display: flex;
   flex-direction: column;
@@ -118,7 +151,7 @@ body {
 
 .page > .view.leaving {
   position: absolute;
-  top: var(--s2);
+  top: calc(48px + var(--s2));
   left: var(--s8);
   right: var(--s8);
 }
@@ -130,6 +163,8 @@ body {
 
 .scroll::-webkit-scrollbar-track {
   background: transparent;
+  /* The bar starts under the title bar, clear of the caption buttons. */
+  margin-top: 48px;
 }
 
 .scroll::-webkit-scrollbar-thumb {

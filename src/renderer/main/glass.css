@@ -382,3 +382,11 @@
 .glass .text-box {
   border-radius: 999px;
 }
+
+/* The title bar's scroll material, in glass: the frosted bar of an iOS navigation bar. */
+.glass .titlebar::before {
+  background: var(--glass-grain), var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 -1px 0 var(--glass-edge);
+}

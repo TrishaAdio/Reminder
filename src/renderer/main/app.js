@@ -1,4 +1,4 @@
-import { installSpringProperties, animate, reducedMotion, spring, FADE } from '../shared/spring.js';
+import { installSpringProperties, animate, reducedMotion, spring, glider, fadeParts, FADE } from '../shared/spring.js';
 import { icon, appMark } from '../shared/icons.js';
 import { h } from './dom.js';
 import { createFormat } from './format.js';
@@ -45,6 +45,8 @@ let highlight = null;
 
 // Title bar: draggable, with the tabs in the middle. Windows draws the caption buttons.
 const thumb = h('span', { class: 'tab-thumb', 'aria-hidden': 'true' });
+const thumbGlide = glider(thumb);
+let tabsShown = false;
 const badge = h('span', { class: 'badge-dot', hidden: true });
 const tabButtons = TABS.map((t, i) =>
   h(
@@ -81,23 +83,41 @@ document.body.append(h('div', { class: 'shell' }, titlebar, page), toaster.el);
 // Idle loops (floating icon, glowing line, drifting glass backdrop) rest while the window
 // isn't in use, so a window left open in the background costs nothing.
 const setIdle = () => document.documentElement.classList.toggle('idle', document.hidden || !document.hasFocus());
+// Opening the window from the tray: the page's pieces rise in, so it arrives instead of
+// just appearing.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && view) stagger(view.el, { rise: 10, gap: 22 });
+});
 window.addEventListener('focus', setIdle);
 window.addEventListener('blur', setIdle);
 document.addEventListener('visibilitychange', setIdle);
 setIdle();
 
-// A page's contents arrive one after another, a few milliseconds apart. Individual
+// A page's contents arrive one after another, a few milliseconds apart: each piece rises on
+// the enter spring while it fades in on the critically damped one, so nothing overshoots its
+// opacity and nothing frosted is ever faded through a parent (fadeParts). Individual
 // `translate`/`opacity` only, and nothing is left behind once it's done.
-function stagger(root) {
+function stagger(root, { rise = 12, gap = 32 } = {}) {
   if (reducedMotion()) return;
   const picks = [
-    ...root.querySelectorAll(':scope > :not(.back):not([hidden])'),
-    ...root.querySelectorAll('.stats > .stat, .rows > .row, .coming > li, .gallery > .preset, .rows-card > .field:not([hidden])'),
+    ...fadeParts(root).filter((el) => !el.classList.contains('back')),
+    ...root.querySelectorAll('.rows > .row, .coming > li, .rows-card > .field:not([hidden])'),
   ];
-  const { duration, easing } = spring('enter');
-  picks.slice(0, 16).forEach((el, i) => {
-    el.animate([{ opacity: 0, translate: '0 12px' }, { opacity: 1, translate: '0 0' }], { duration, easing, delay: 40 + i * 32, fill: 'backwards' });
+  const move = spring('enter');
+  const fade = spring('smooth');
+  picks.slice(0, 18).forEach((el, i) => {
+    const delay = 30 + i * gap;
+    el.animate([{ translate: `0 ${rise}px` }, { translate: '0 0' }], { ...move, delay, fill: 'backwards', composite: 'add' });
+    el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: fade.duration * 0.7, easing: fade.easing, delay, fill: 'backwards' });
   });
+}
+
+// The leaving page: each piece fades (fadeParts), the page itself only slides.
+function leave(el, dx) {
+  const exit = spring('exit');
+  if (!reducedMotion() && dx) animate(el, [{ transform: 'none' }, { transform: `translateX(${dx}px)` }], 'exit');
+  const fades = fadeParts(el).map((part) => part.animate([{ opacity: 1 }, { opacity: 0 }], { ...(reducedMotion() ? FADE : exit), fill: 'forwards' }).finished);
+  return Promise.all(fades).catch(() => {});
 }
 
 function backButton(label = 'Reminders') {
@@ -148,7 +168,8 @@ function build() {
 
 function paintTabs() {
   const i = TABS.findIndex((t) => t.id === route.tab);
-  thumb.style.transform = `translateX(${i * 100}%)`;
+  thumbGlide.set(i, tabsShown);
+  tabsShown = true;
   tabButtons.forEach((b, j) => {
     b.setAttribute('aria-selected', String(i === j));
     b.tabIndex = i === j ? 0 : -1;
@@ -175,21 +196,19 @@ function go(next, { back = false, section = null } = {}) {
   if (old) {
     old.el.classList.add('leaving');
     old.el.inert = true;
-    const dx = back ? 24 : -24;
-    const out = reducedMotion() || !pushed ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: `translateX(${dx}px)` }];
-    animate(old.el, out, reducedMotion() ? FADE : 'exit').then(() => old.el.remove());
+    // Kept where it is while it leaves, even though the page scrolls back to the top.
+    old.el.style.top = `${56 - page.scrollTop}px`;
+    leave(old.el, pushed ? (back ? 24 : -24) : 0).then(() => old.el.remove());
   }
   page.scrollTop = 0;
   page.append(view.el);
-  stagger(view.el);
-  if (old) {
-    const dx = back ? -32 : 32;
-    const into = reducedMotion()
-      ? [{ opacity: 0 }, { opacity: 1 }]
-      : pushed
-        ? [{ opacity: 0, transform: `translateX(${dx}px)` }, { opacity: 1, transform: 'none' }]
-        : [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }];
-    animate(view.el, into, reducedMotion() ? FADE : pushed ? 'layout' : 'exit');
+  if (reducedMotion()) {
+    if (old) fadeParts(view.el).forEach((part) => part.animate([{ opacity: 0 }, { opacity: 1 }], FADE));
+  } else {
+    // Tabs: the pieces rise in one after another. Pushed pages slide in from their side as a
+    // whole while the pieces fade in quickly behind each other.
+    stagger(view.el, pushed ? { rise: 0, gap: 18 } : {});
+    if (pushed) animate(view.el, [{ transform: `translateX(${back ? -32 : 32}px)` }, { transform: 'none' }], 'layout');
   }
   paintTabs();
   if (section === 'about') requestAnimationFrame(() => view.showAbout?.());
