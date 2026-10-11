@@ -1,5 +1,6 @@
 import { h } from './dom.js';
 import { icon } from '../shared/icons.js';
+import { glider } from '../shared/spring.js';
 
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -25,6 +26,7 @@ export function toggle({ checked, label, onChange }) {
 
 export function segmented({ options, value, label, onChange }) {
   const thumb = h('span', { class: 'seg-thumb', 'aria-hidden': 'true' });
+  const glide = glider(thumb);
   const buttons = options.map((o) =>
     h('button', { class: 'seg-option', type: 'button', role: 'radio', onclick: () => select(o.value, true) }, o.label),
   );
@@ -39,7 +41,8 @@ export function segmented({ options, value, label, onChange }) {
       b.setAttribute('aria-checked', String(i === index));
       b.tabIndex = i === index ? 0 : -1;
     });
-    thumb.style.transform = `translateX(${index * 100}%)`;
+    // Glides only once it's on screen; the first paint just places it.
+    glide.set(index, el.isConnected);
     if (byUser) onChange(value);
   }
 

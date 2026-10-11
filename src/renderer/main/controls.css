@@ -172,7 +172,7 @@
   border-radius: var(--r-thumb);
   background: var(--thumb);
   box-shadow: var(--shadow-knob);
-  transition: transform var(--layout-duration) var(--layout-easing);
+  /* Moved by a spring follower in JS (spring.js glider), which keeps momentum. */
 }
 
 .seg-option {

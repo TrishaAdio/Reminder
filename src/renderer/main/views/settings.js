@@ -309,7 +309,7 @@ export function settingsView({ api, state, fmt, player, actions }) {
       updates.set(u);
     },
     showAbout() {
-      about.scrollIntoView({ block: 'start' });
+      about.scrollIntoView({ block: 'start', behavior: 'smooth' });
     },
   };
 }

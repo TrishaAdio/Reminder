@@ -1,5 +1,5 @@
 import { h, setText } from './dom.js';
-import { reducedMotion } from '../shared/spring.js';
+import { reducedMotion, follower } from '../shared/spring.js';
 
 // A picture that feels alive, without redrawing it: one small WebGL pass over the cut-out.
 //   Breathing: the figure stretches up from its feet by about 1%, slowly.
@@ -9,7 +9,8 @@ import { reducedMotion } from '../shared/spring.js';
 // Around it: the figure leans a little toward the pointer, waves hello (a sway from the hips),
 // says things in a speech bubble, and a few sparkles drift up behind it.
 // Reduced motion, no WebGL, or a lost context all fall back to the plain picture. The loop
-// runs at 30 fps and rests while the window isn't in use, like the app's other idle loops.
+// draws every display frame (60, 120, 144 Hz…) from real time, and rests while the window
+// isn't in use, like the app's other idle loops. The canvas is small, so a frame is cheap.
 
 const VERTEX = `
 attribute vec2 a_pos;
@@ -59,7 +60,6 @@ void main() {
 
 const PAD_X = 0.06;
 const PAD_TOP = 0.05;
-const FRAME = 1000 / 30;
 const GLINT_EVERY = 7000;
 const GLINT_FOR = 1400;
 
@@ -134,6 +134,18 @@ export function livePicture({ className = '' } = {}) {
   let observer = null;
   let size = { width: 0, height: 0, box: { x: 0, y: 0, w: 1, h: 1 } };
 
+  // Leaning toward the pointer is a spring that follows it: soft, with momentum, never a
+  // restarted curve. Two of them, sideways and up/down.
+  const leanTo = { x: 0, y: 0 };
+  const paintLean = () => {
+    figure.style.rotate = `${(leanTo.x * 3).toFixed(3)}deg`;
+    figure.style.translate = `${(leanTo.x * 4).toFixed(2)}px ${(Math.abs(leanTo.x) * -2 + leanTo.y * 2).toFixed(2)}px`;
+  };
+  const leanX = follower({ stiffness: 90, damping: 15, onFrame: (v) => ((leanTo.x = v), paintLean()) });
+  const leanY = follower({ stiffness: 90, damping: 15, onFrame: (v) => ((leanTo.y = v), paintLean()) });
+  leanX.set(0, false);
+  leanY.set(0, false);
+
   const active = () => !document.hidden && document.hasFocus() && figure.isConnected;
 
   function setLive(on) {
@@ -166,7 +178,7 @@ export function livePicture({ className = '' } = {}) {
 
   function frame(now, force = false) {
     if (!renderer || !ready || !size.width) return;
-    if (!force && now - last < FRAME) return;
+    if (!force && now === last) return;
     last = now;
     const t = (now - start) / 1000;
     const phase = (now - start) % GLINT_EVERY;
@@ -296,15 +308,13 @@ export function livePicture({ className = '' } = {}) {
     lean(x, y) {
       if (reducedMotion()) return;
       if (x == null) {
-        figure.style.rotate = '';
-        figure.style.translate = '';
+        leanX.set(0);
+        leanY.set(0);
         return;
       }
       const r = img.getBoundingClientRect();
-      const dx = Math.max(-1, Math.min(1, (x - (r.left + r.width / 2)) / 360));
-      const dy = Math.max(-1, Math.min(1, (y - (r.top + r.height * 0.3)) / 360));
-      figure.style.rotate = `${(dx * 3).toFixed(2)}deg`;
-      figure.style.translate = `${(dx * 4).toFixed(1)}px ${(Math.abs(dx) * -2 + dy * 2).toFixed(1)}px`;
+      leanX.set(Math.max(-1, Math.min(1, (x - (r.left + r.width / 2)) / 360)));
+      leanY.set(Math.max(-1, Math.min(1, (y - (r.top + r.height * 0.3)) / 360)));
     },
     destroy() {
       cancelAnimationFrame(raf);

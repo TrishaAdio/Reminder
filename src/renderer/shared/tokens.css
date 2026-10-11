@@ -369,9 +369,25 @@ svg.icon.solid {
   font-variant-numeric: tabular-nums;
 }
 
-/* Press squashes to 0.97 instantly and springs back; curves come from spring.js. */
+/* Press squashes to 0.97 instantly and springs back; curves come from spring.js. Colour,
+   fill and shadow ease on the critically damped spring, so hover and press never snap. */
 .pressable {
-  transition: transform var(--release-duration, 360ms) var(--release-easing, ease-out);
+  transition:
+    transform var(--release-duration, 360ms) var(--release-easing, ease-out),
+    background-color var(--smooth-duration, 240ms) var(--smooth-easing, ease-out),
+    color var(--smooth-duration, 240ms) var(--smooth-easing, ease-out),
+    box-shadow var(--smooth-duration, 240ms) var(--smooth-easing, ease-out),
+    opacity var(--smooth-duration, 240ms) var(--smooth-easing, ease-out);
+}
+
+/* Every other surface that changes colour on hover, press or selection eases too. :where()
+   keeps this at zero specificity, so any element with its own transitions keeps them. */
+:where(button, input, .row, .coming-row, .legend-item, .sound, .preset, .seg-option, .day, .time-seg, .stepper-button, .toast-action, .title-input, .field, .buddy-thumb, .tab) {
+  transition:
+    background-color var(--smooth-duration, 240ms) var(--smooth-easing, ease-out),
+    color var(--smooth-duration, 240ms) var(--smooth-easing, ease-out),
+    box-shadow var(--smooth-duration, 240ms) var(--smooth-easing, ease-out),
+    opacity var(--smooth-duration, 240ms) var(--smooth-easing, ease-out);
 }
 
 .pressable:active:not(:disabled),
@@ -386,6 +402,6 @@ svg.icon.solid {
   .pressable:active:not(:disabled),
   .pressable.is-pressed {
     transform: none;
-    transition: none;
+    transition-property: background-color, color, box-shadow, opacity;
   }
 }

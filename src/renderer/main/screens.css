@@ -268,11 +268,13 @@
 .ring-progress {
   stroke: var(--ink, var(--accent));
   stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
 }
 
 .ring-head {
   position: absolute;
   inset: 0;
+  transition: transform 1s linear;
 }
 
 /* The live head of the ring: a small bead that breathes while time passes. */
@@ -1029,6 +1031,55 @@
 
 .text-box:focus {
   box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Rolling text (morph.js). */
+.hero-big,
+.stat-value,
+.timeline .card-head > .muted {
+  position: relative;
+}
+
+.m-head,
+.m-tail,
+.m-new,
+.m-ghost {
+  white-space: pre;
+}
+
+.m-head {
+  white-space: pre-wrap;
+}
+
+.m-mid,
+.m-tail,
+.m-new,
+.m-all {
+  display: inline-block;
+}
+
+.m-mid {
+  position: relative;
+}
+
+.m-all {
+  max-width: 100%;
+}
+
+.m-ghost {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+.m-ghost-all {
+  right: 0;
+}
+
+.now-tag .m-ghost-all {
+  left: 7px;
+  right: 7px;
 }
 
 /* ── Reminders list ─────────────────────────────────── */
@@ -1818,6 +1869,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .ring-progress,
+  .ring-head {
+    transition: none;
+  }
+
   .ring-dot,
   .dots i,
   .row.flash::after {
