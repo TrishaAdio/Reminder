@@ -1,6 +1,8 @@
 import { h, setText } from '../dom.js';
 import { icon, tintClass } from '../../shared/icons.js';
-import { animate, reducedMotion } from '../../shared/spring.js';
+import { animate, reducedMotion, spring, FADE } from '../../shared/spring.js';
+import { appear, setShown, settleHeight } from '../presence.js';
+import { flip, enterItem, leaveItem } from '../flip.js';
 import { livePicture } from '../live-picture.js';
 import { morphText } from '../morph.js';
 
@@ -126,7 +128,8 @@ export function todayView({ api, state, fmt, go }) {
   const tryIt = h('button', { class: 'button small hero-try pressable', type: 'button' }, h('span', { html: icon('play') }), 'Test now');
   const live = livePicture({ className: 'hero-buddy-figure' });
   const buddy = h('button', { class: 'hero-buddy', type: 'button', title: 'Another picture', 'aria-label': 'Show another picture', onclick: () => turnPicture(1) }, live.el);
-  const hero = h('section', { class: 'hero card' }, r.el, h('div', { class: 'hero-text' }, eyebrow, name, big, sub, actions), open, buddy);
+  const heroText = h('div', { class: 'hero-text' }, eyebrow, name, big, sub, actions);
+  const hero = h('section', { class: 'hero card' }, r.el, heroText, open, buddy);
 
   // ── Numbers for today ──
   const doneStat = stat({ iconName: 'check-circle', tint: 'green', label: 'Done today' });
@@ -167,6 +170,7 @@ export function todayView({ api, state, fmt, go }) {
 
   const el = h('div', { class: 'view today' }, head, hero, stats, timeline, coming);
   let heroKey = null;
+  let lanesSig = null;
   let pictureTurn = nextPictureTurn();
   let pictureFile = null;
   let lastLine = '';
@@ -282,14 +286,66 @@ export function todayView({ api, state, fmt, go }) {
     if (paused) text = `Paused until ${fmt.time(pausedUntil)}`;
     else if (s.muted) text = 'Quiet hours';
     else if (q.enabled) text = `Quiet from ${fmt.clock(q.from)}`;
-    setText(chip, text);
-    chip.hidden = !text;
+    if (text) morphText(chip, text);
+    setShown(chip, Boolean(text));
     chip.dataset.kind = paused ? 'paused' : s.muted ? 'quiet' : 'info';
-    pauseButton.hidden = paused || !s.reminders.some((x) => x.enabled);
-    resumeButton.hidden = !paused;
+    // Pause and Resume trade places: one fades out as the other pops in.
+    setShown(pauseButton, !paused && s.reminders.some((x) => x.enabled));
+    setShown(resumeButton, paused);
   }
 
+  // A change of state (paused, quiet, a different reminder up next) used to swap the card's
+  // contents in one frame. Now the card's height glides to its new size, the text and
+  // buttons rise in one after another, the icon pops, and the picture says something.
   function paintHero(now) {
+    const before = heroKey;
+    const live = hero.isConnected && before != null;
+    const h0 = live ? hero.offsetHeight : null;
+    // The old text stays on screen as a ghost and fades out while the new text comes in, so
+    // the card is never empty for a frame.
+    const ghost = live && !reducedMotion() ? heroText.cloneNode(true) : null;
+    const spot = ghost && { left: heroText.offsetLeft, top: heroText.offsetTop, width: heroText.offsetWidth };
+    const changed = drawHero(now);
+    if (!changed || !live) return;
+    if (ghost && before.split(':')[0] !== 'never') {
+      Object.assign(ghost.style, { position: 'absolute', left: `${spot.left}px`, top: `${spot.top}px`, width: `${spot.width}px`, margin: 0, pointerEvents: 'none' });
+      ghost.inert = true;
+      ghost.setAttribute('aria-hidden', 'true');
+      ghost.classList.add('hero-ghost');
+      hero.append(ghost);
+      const out = spring('exit');
+      ghost.animate([{ opacity: 1, translate: '0 0', filter: 'blur(0)' }, { opacity: 0, translate: '0 -8px', filter: 'blur(4px)' }], { duration: out.duration * 0.8, easing: out.easing, fill: 'forwards' }).finished.then(
+        () => ghost.remove(),
+        () => ghost.remove(),
+      );
+    }
+    heroSwap(h0, before.split(':')[0], heroKey.split(':')[0]);
+  }
+
+  function heroSwap(h0, from, to) {
+    settleHeight(hero, h0);
+    const pieces = [eyebrow, name, sub, actions].filter((x) => x.textContent || x.children.length);
+    if (reducedMotion()) {
+      for (const x of [...pieces, r.center]) x.animate([{ opacity: 0 }, { opacity: 1 }], FADE);
+    } else {
+      // Opacity on the quick, critically damped curve (it starts moving at once); position on
+      // the enter spring, a little apart from each other.
+      const fade = spring('exit');
+      const move = spring('enter');
+      pieces.forEach((x, i) => {
+        const delay = 40 + i * 35;
+        x.animate([{ opacity: 0, filter: 'blur(4px)' }, { opacity: 1, filter: 'blur(0)' }], { ...fade, delay, fill: 'backwards' });
+        x.animate([{ translate: '0 10px' }, { translate: '0 0' }], { ...move, delay, fill: 'backwards', composite: 'add' });
+      });
+      const icon = r.center.firstElementChild;
+      icon?.animate([{ scale: 0.4, opacity: 0, rotate: '-12deg' }, { scale: 1, opacity: 1, rotate: '0deg' }], { ...spring('release'), fill: 'backwards' });
+    }
+    const lines = { paused: 'Break time! I’ll keep watch.', quiet: 'Shh… quiet hours.', empty: 'Let’s add a reminder!' };
+    if (lines[to]) live.say(lines[to], 3000);
+    else if (to === 'up' && (from === 'paused' || from === 'quiet')) live.say('Back to it!', 2600);
+  }
+
+  function drawHero(now) {
     const { pausedUntil, quiet: q } = s.settings;
     const paused = pausedUntil != null && pausedUntil > now;
     const up = nextUp();
@@ -317,7 +373,7 @@ export function todayView({ api, state, fmt, go }) {
       morphText(big, paused ? 'Paused' : 'Quiet');
       setText(sub, `Until ${fmt.time(paused ? pausedUntil : quietEnd(now, q))}. Reminders that come up meanwhile are skipped.`);
       r.set(0, false);
-      return;
+      return changed;
     }
 
     if (!up) {
@@ -330,7 +386,7 @@ export function todayView({ api, state, fmt, go }) {
       morphText(big, s.reminders.length ? 'Nothing on' : 'Nothing yet');
       setText(sub, s.reminders.length ? 'Every reminder is switched off.' : 'Pick a preset and your first reminder is set in one click.');
       r.set(0, false);
-      return;
+      return changed;
     }
 
     const { rem, st } = up;
@@ -352,6 +408,7 @@ export function todayView({ api, state, fmt, go }) {
     setText(sub, `${fmt.time(st.nextAt)} · ${sch.type === 'daily' ? capitalize(fmt.days(sch.days)) : fmt.schedule(sch)}`);
     const start = ringStart(rem, st);
     r.set((now - start) / Math.max(1, st.nextAt - start), changed);
+    return changed;
   }
 
   function paintStats(now) {
@@ -361,7 +418,7 @@ export function todayView({ api, state, fmt, go }) {
     leftStat.set(left, left ? `Until midnight` : 'All clear for today');
     const on = s.reminders.filter((x) => x.enabled).length;
     onStat.set(on, `of ${s.reminders.length}`);
-    stats.hidden = s.reminders.length === 0;
+    setShown(stats, s.reminders.length > 0);
   }
 
   function paintTimeline(now) {
@@ -396,54 +453,118 @@ export function todayView({ api, state, fmt, go }) {
     const order = [];
     for (const o of items) if (!order.includes(o.id)) order.push(o.id);
     const shown = order.slice(0, LANES);
-    lanes.replaceChildren(
-      ...shown.map((id) => {
-        const rem = byId(id);
-        const lane = h('div', { class: `lane ${tintClass(rem.icon)}` });
-        for (const o of items) {
-          if (o.id !== id) continue;
-          lane.append(h('span', { class: 'dot', style: `left:${frac(o.at) * 100}%`, title: `${rem.name} · ${fmt.time(o.at)}` }));
+    // Rebuilt only when something changed. New dots pop in; a dot whose time has passed
+    // (or whose reminder was switched off) shrinks away where it was.
+    const sig = shown.map((id) => `${id}:${items.filter((o) => o.id === id).map((o) => o.at).join(',')}`).join('|');
+    if (sig !== lanesSig) {
+      const first = lanesSig == null;
+      lanesSig = sig;
+      const trackBox = track.getBoundingClientRect();
+      // Where each dot is now, measured before the rebuild takes them out.
+      const old = new Map([...lanes.querySelectorAll('.dot')].map((d) => [d.dataset.key, { box: d.getBoundingClientRect(), color: getComputedStyle(d).backgroundColor }]));
+      const keep = new Set();
+      lanes.replaceChildren(
+        ...shown.map((id) => {
+          const rem = byId(id);
+          const lane = h('div', { class: `lane ${tintClass(rem.icon)}` });
+          for (const o of items) {
+            if (o.id !== id) continue;
+            const key = `${id}:${o.at}`;
+            const dot = h('span', { class: 'dot', style: `left:${frac(o.at) * 100}%`, title: `${rem.name} · ${fmt.time(o.at)}` });
+            dot.dataset.key = key;
+            lane.append(dot);
+            if (old.has(key)) keep.add(key);
+            else if (!first && !reducedMotion()) dot.animate([{ scale: 0, opacity: 0 }, { scale: 1, opacity: 1 }], { ...spring('release'), delay: 40, fill: 'backwards' });
+          }
+          return lane;
+        }),
+      );
+      if (!first && !reducedMotion() && trackBox.width) {
+        for (const [key, { box, color }] of old) {
+          if (keep.has(key) || !box.width) continue;
+          const ghost = h('span', { class: 'dot dot-ghost', style: `left:${box.left - trackBox.left + box.width / 2}px; top:${box.top - trackBox.top}px; background:${color}` });
+          track.append(ghost);
+          ghost.animate([{ scale: 1, opacity: 1 }, { scale: 2.2, opacity: 0 }], { ...spring('smooth'), fill: 'forwards' }).finished.then(() => ghost.remove(), () => ghost.remove());
         }
-        return lane;
-      }),
-    );
+      }
+    }
     track.style.setProperty('--lanes', Math.max(1, Math.min(LANES, order.length)));
 
     // A key under the timeline: which colour is which, and how many of each are left.
-    legend.replaceChildren(
-      ...shown.map((id) => {
-        const rem = byId(id);
-        const n = items.filter((o) => o.id === id).length;
-        return h(
+    // Chips stay put while their counts roll; new ones pop in, gone ones fade out.
+    const chips = new Map([...legend.children].map((li) => [li.dataset.key, li]));
+    for (const [id, li] of chips) if (!shown.includes(id)) li.remove();
+    shown.forEach((id, i) => {
+      const rem = byId(id);
+      const n = items.filter((o) => o.id === id).length;
+      let li = chips.get(id);
+      if (!li) {
+        const countEl = h('span', { class: 'legend-count tnum' });
+        li = h(
           'li',
           { class: tintClass(rem.icon) },
-          h('button', { class: 'legend-item', type: 'button', onclick: () => go({ tab: 'reminders', page: { kind: 'editor', id } }) }, h('span', { class: 'legend-dot', 'aria-hidden': 'true' }), h('span', { class: 'legend-name' }, rem.name.trim() || 'Reminder'), h('span', { class: 'legend-count tnum' }, `×${n}`)),
+          h('button', { class: 'legend-item', type: 'button', onclick: () => go({ tab: 'reminders', page: { kind: 'editor', id } }) }, h('span', { class: 'legend-dot', 'aria-hidden': 'true' }), h('span', { class: 'legend-name' }), countEl),
         );
-      }),
-    );
-    legend.hidden = shown.length === 0;
+        li.dataset.key = id;
+        legend.insertBefore(li, legend.children[i] ?? null);
+        if (chips.size) requestAnimationFrame(() => appear(li, { rise: 0, scale: 0.8 }));
+      } else if (legend.children[i] !== li) legend.insertBefore(li, legend.children[i] ?? null);
+      li.className = tintClass(rem.icon);
+      setText(li.querySelector('.legend-name'), rem.name.trim() || 'Reminder');
+      morphText(li.querySelector('.legend-count'), `×${n}`, { direction: -1 });
+    });
+    setShown(legend, shown.length > 0);
 
     // Each reminder once, at its next time; the hero already shows the first.
     const heroId = heroKey?.startsWith('up') ? heroKey.split(':')[1] : null;
     const next = order.filter((id) => id !== heroId).map((id) => items.find((o) => o.id === id)).slice(0, 5);
-    comingList.replaceChildren(
-      ...next.map((o) => {
+    // Rows are kept by reminder: times and "in 12 min" roll in place, rows that move glide to
+    // their new spot (FLIP), new ones slide in and finished ones fade away.
+    const rows = new Map([...comingList.querySelectorAll(':scope > li[data-key]:not(.leaving)')].map((li) => [li.dataset.key, li]));
+    const wanted = next.map((o) => o.id);
+    const reorder = wanted.join() !== [...rows.keys()].join();
+    const fill = () => {
+      next.forEach((o, i) => {
         const rem = byId(o.id);
-        return h(
-          'li',
-          {},
-          h(
-            'button',
-            { class: 'coming-row', type: 'button', onclick: () => go({ tab: 'reminders', page: { kind: 'editor', id: rem.id } }) },
-            h('span', { class: 'coming-time t-small tnum' }, fmt.time(o.at)),
-            tile(rem.icon, 'small'),
-            h('span', { class: 'coming-name' }, rem.name.trim() || 'Reminder'),
-            h('span', { class: 'coming-rel t-small tnum' }, fmt.relative(o.at, now)),
-          ),
-        );
-      }),
-    );
-    coming.hidden = next.length === 0;
+        let li = rows.get(o.id);
+        if (!li) {
+          li = h(
+            'li',
+            {},
+            h(
+              'button',
+              { class: 'coming-row', type: 'button', onclick: () => go({ tab: 'reminders', page: { kind: 'editor', id: o.id } }) },
+              h('span', { class: 'coming-time t-small tnum' }),
+              h('span', { class: 'coming-tile' }),
+              h('span', { class: 'coming-name' }),
+              h('span', { class: 'coming-rel t-small tnum' }),
+            ),
+          );
+          li.dataset.key = o.id;
+          rows.set(o.id, li);
+          li.isNew = true;
+        }
+        const tileHost = li.querySelector('.coming-tile');
+        if (tileHost.dataset.icon !== rem.icon) {
+          tileHost.dataset.icon = rem.icon;
+          tileHost.replaceChildren(tile(rem.icon, 'small'));
+        }
+        morphText(li.querySelector('.coming-time'), fmt.time(o.at));
+        setText(li.querySelector('.coming-name'), rem.name.trim() || 'Reminder');
+        morphText(li.querySelector('.coming-rel'), fmt.relative(o.at, now), { direction: -1 });
+        const at = comingList.children[i];
+        if (at !== li) comingList.insertBefore(li, at ?? null);
+      });
+      for (const [id, li] of rows) if (!wanted.includes(id) && !li.classList.contains('leaving')) leaveItem(li);
+    };
+    if (reorder && comingList.children.length && !coming.hidden) flip(comingList, fill);
+    else fill();
+    for (const li of comingList.children) {
+      if (!li.isNew) continue;
+      li.isNew = false;
+      if (rows.size > 1 && !coming.hidden) enterItem(li);
+    }
+    setShown(coming, next.length > 0);
   }
 
   function paint(now = Date.now()) {

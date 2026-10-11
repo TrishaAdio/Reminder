@@ -268,13 +268,13 @@
 .ring-progress {
   stroke: var(--ink, var(--accent));
   stroke-linecap: round;
-  transition: stroke-dashoffset 1s linear;
+  transition: stroke-dashoffset 1s linear, opacity var(--smooth-duration) var(--smooth-easing);
 }
 
 .ring-head {
   position: absolute;
   inset: 0;
-  transition: transform 1s linear;
+  transition: transform 1s linear, opacity var(--smooth-duration) var(--smooth-easing);
 }
 
 /* The live head of the ring: a small bead that breathes while time passes. */
@@ -302,9 +302,31 @@
   place-items: center;
 }
 
+/* Not counting down: the arc drains and fades instead of vanishing. */
+.ring-progress,
+.ring-head {
+  opacity: 1;
+}
+
 .hero:not([data-state='up']) .ring-progress,
 .hero:not([data-state='up']) .ring-head {
-  display: none;
+  opacity: 0;
+}
+
+.coming-tile {
+  display: contents;
+}
+
+/* A dot whose time has passed, shrinking away where it was. */
+.dot-ghost {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* The timeline's shaded past and the "now" line creep instead of stepping every 15 s. */
+.past,
+.now {
+  transition: transform 1.2s var(--smooth-easing);
 }
 
 /* Three numbers for today. */
@@ -1870,8 +1892,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ring-progress,
-  .ring-head {
-    transition: none;
+  .ring-head,
+  .past,
+  .now {
+    transition: opacity 150ms linear;
   }
 
   .ring-dot,
