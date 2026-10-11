@@ -4,6 +4,8 @@ import { flip } from '../flip.js';
 import { icon, appMark } from '../../shared/icons.js';
 import { updatePanel } from './update-panel.js';
 import { creditFooter } from './footer.js';
+import { setShown } from '../presence.js';
+import { morphText } from '../morph.js';
 
 const field = (label, control, sub) =>
   h(
@@ -283,9 +285,9 @@ export function settingsView({ api, state, fmt, player, actions }) {
     sampleRow.hidden = !s.reminders.length;
     paintCompanions();
     const paused = st.pausedUntil != null && st.pausedUntil > Date.now();
-    pauseButtons.hidden = paused;
-    resume.hidden = !paused;
-    setText(pauseSub, paused ? `Paused until ${fmt.time(st.pausedUntil)}` : 'Nothing comes up until the pause ends.');
+    setShown(pauseButtons, !paused);
+    setShown(resume, paused);
+    morphText(pauseSub, paused ? `Paused until ${fmt.time(st.pausedUntil)}` : 'Nothing comes up until the pause ends.');
     quietToggle.set(st.quiet.enabled);
     quietFrom.set(st.quiet.from);
     quietTo.set(st.quiet.to);
